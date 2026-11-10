@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1D766C">
+<meta name="description" content="Turing de Bolso: aquecimento, desafios guiados e simulador de Máquinas de Turing em quádruplas (notação de Carnielli e Epstein), feito para o celular.">
+<title>Turing de Bolso</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231D766C'/%3E%3Cpath d='M20 14h24l-12 14z' fill='%23F2A541'/%3E%3Crect x='8' y='32' width='16' height='18' fill='%23fff' stroke='%231B2631' stroke-width='3'/%3E%3Crect x='24' y='32' width='16' height='18' fill='%23F2A541' stroke='%231B2631' stroke-width='3'/%3E%3Crect x='40' y='32' width='16' height='18' fill='%23fff' stroke='%231B2631' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Zilla+Slab:wght@600;700&display=swap">
+<style>
+/* Layout: abas (aquecimento, desafios guiados, simulador). No simulador, coluna única no celular e duas colunas a partir de 960px */
+:root {
+  --bg: #EDF1F2;
+  --surface: #FFFFFF;
+  --ink: #1B2631;
+  --muted: #586874;
+  --line: #D2DBDF;
+  --accent: #1D766C;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEEEB;
+  --head: #F2A541;
+  --head-ink: #1B2631;
+  --halt: #C24F36;
+  --halt-soft: #F8E1DA;
+  --ok: #2E7A44;
+  --ok-soft: #DDEFE2;
+  --warn: #93600F;
+  --warn-soft: #F9EBD3;
+  --cell0: #E4EAEC;
+  --cell1: #FFFFFF;
+  --code-bg: #1C3442;
+  --code-ink: #F1F5F6;
+  --code-muted: #9FB4C0;
+  --code-new: rgba(108, 193, 132, 0.22);
+  --font-display: "Zilla Slab", Rockwell, "Roboto Slab", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 10px;
+  --cell: 44px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F171C; --surface: #17242D; --ink: #E6EDF1; --muted: #9BAAB5; --line: #2A3A45;
+    --accent: #4BB0A2; --accent-ink: #0B1A1D; --accent-soft: #173A37;
+    --head: #F2B25E; --head-ink: #1B2631; --halt: #F08268; --halt-soft: #3C2420;
+    --ok: #6CC184; --ok-soft: #1C3426; --warn: #E8B45A; --warn-soft: #3A2E17;
+    --cell0: #20303A; --cell1: #0E161B; --code-bg: #0C151A; --code-ink: #E6EDF1; --code-muted: #8EA2AE;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 84px; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+[hidden] { display: none !important; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 7vw, 2.8rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.2rem; }
+p { margin: 0; }
+a { color: var(--accent); }
+.eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.lead { color: var(--muted); max-width: 62ch; }
+header.top { display: grid; gap: 6px; }
+
+/* abas */
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 16px -12px rgba(0, 0, 0, 0.35); }
+.tabs button { border: 0; background: transparent; min-height: 50px; padding: 5px 4px; border-radius: 8px; display: grid; justify-items: center; align-content: center; gap: 1px; line-height: 1.15; font-weight: 600; font-size: 0.95rem; }
+.tabs button small { font-size: 0.72rem; font-weight: 500; color: var(--muted); display: inline-flex; align-items: center; gap: 3px; }
+.tabs button small svg { width: 11px; height: 11px; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tabs button[aria-selected="true"] small { color: var(--accent-ink); opacity: 0.9; }
+.painel { display: grid; gap: 18px; min-width: 0; }
+.guia { width: 100%; max-width: 760px; margin: 0 auto; display: grid; gap: 18px; min-width: 0; }
+
+.layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+.col { display: grid; gap: 18px; align-content: start; min-width: 0; }
+@media (min-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; }
+}
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.card-head .field { flex: 1 1 170px; max-width: 260px; }
+.card-head h2 { flex: 0 0 auto; }
+
+/* botões */
+button, select, input[type="text"], input[type="number"] { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); padding: 9px 14px; min-height: 44px; font-weight: 500; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid var(--head); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.link { border: 0; background: none; color: var(--accent); padding: 6px 2px; min-height: 40px; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; justify-self: start; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+select, input[type="text"], input[type="number"] { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 9px 10px; min-height: 44px; font-size: 16px; width: 100%; min-width: 0; }
+label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.row > .field { flex: 1 1 140px; min-width: 0; }
+.row.acoes > button { flex: 1 1 160px; }
+
+/* ===== guiado: código, alternativas, retorno ===== */
+.prog { display: flex; gap: 5px; align-items: center; }
+.prog i { width: 22px; height: 6px; border-radius: 3px; background: var(--line); }
+.prog i.feito { background: var(--accent); }
+.prog i.erro { background: var(--halt); }
+.prog i.atual { background: var(--head); }
+.codigo { background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 10px 0; font-family: var(--font-mono); font-size: 16px; line-height: 1.55; overflow-x: auto; }
+.codigo .ln { display: grid; grid-template-columns: 2.6em minmax(0, 1fr); gap: 0 10px; padding: 2px 12px 2px 0; }
+.codigo .ln .n { color: var(--code-muted); text-align: right; user-select: none; }
+.codigo .ln .q { white-space: pre; font-weight: 600; }
+.codigo .ln .cm { color: var(--code-muted); display: inline-block; white-space: normal; margin-left: 1.2ch; font-weight: 400; }
+.codigo .ln.vazia .q { display: inline-block; border: 2px dashed var(--head); color: var(--head); border-radius: 6px; padding: 0 12px; line-height: 1.4; }
+.codigo .ln.nova { background: var(--code-new); }
+.codigo .ln.fim .q { color: var(--code-muted); font-weight: 400; white-space: normal; }
+.onde { display: grid; gap: 8px; }
+.onde .cap { font-size: 0.9rem; color: var(--muted); }
+.pergunta { font-size: 1.05rem; font-weight: 600; }
+.opcoes { display: grid; gap: 10px; }
+@media (min-width: 560px) { .opcoes { grid-template-columns: 1fr 1fr; } }
+.opcao { display: flex; align-items: center; gap: 12px; text-align: left; min-height: 58px; padding: 10px 14px; font-family: var(--font-mono); font-size: 1.15rem; font-weight: 600; background: var(--surface); }
+.opcao .let { font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--cell0); color: var(--muted); flex: 0 0 auto; }
+.opcao .txt { min-width: 0; }
+.opcao.prosa { font-family: var(--font-body); font-size: 1rem; font-weight: 500; }
+.opcao.prosa code { font-family: var(--font-mono); font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+.opcao:disabled { opacity: 1; cursor: default; }
+.opcao.apagada { opacity: 0.5; }
+.opcao.certa { border: 2px solid var(--ok); background: var(--ok-soft); }
+.opcao.certa .let { background: var(--ok); color: #FFFFFF; }
+.opcao.errada { border: 2px solid var(--halt); background: var(--halt-soft); }
+.opcao.errada .let { background: var(--halt); color: #FFFFFF; }
+.feedback { border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.feedback:empty { display: none; }
+.feedback.ok { background: var(--ok-soft); }
+.feedback.bad { background: var(--halt-soft); }
+.feedback strong.t { font-size: 1.05rem; }
+.feedback code, .mono-i { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.feedback .correta { border-top: 1px solid var(--line); padding-top: 8px; }
+.placar { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1; }
+.lista-ok { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.lista-ok li { display: flex; gap: 8px; align-items: baseline; }
+.lista-ok .s { font-weight: 700; }
+.lista-ok .s.v { color: var(--ok); }
+.lista-ok .s.x { color: var(--halt); }
+.aviso { display: grid; gap: 10px; justify-items: start; }
+.niveis { display: grid; gap: 12px; }
+@media (min-width: 720px) { .niveis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.nivel { text-align: left; display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); min-height: 0; }
+.nivel .tag { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.nivel b { font-family: var(--font-display); font-size: 1.25rem; line-height: 1.2; }
+.nivel .st { font-size: 0.85rem; color: var(--muted); }
+.nivel .ir { margin-top: 4px; font-weight: 600; color: var(--accent); }
+.nivel.feito { border: 2px solid var(--ok); }
+.nivel.feito .st { color: var(--ok); font-weight: 600; }
+.enun { background: var(--cell0); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; font-size: 0.95rem; }
+.enun .ex { font-family: var(--font-mono); font-size: 0.9rem; color: var(--muted); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips button { min-height: 40px; padding: 6px 12px; font-family: var(--font-mono); font-size: 0.95rem; }
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.mini { --cell: 40px; display: grid; gap: 12px; min-width: 0; }
+.tape-box.estatica { padding-top: 50px; }
+@keyframes surge { from { background: rgba(242, 165, 65, 0.45); } to { background: var(--code-new); } }
+@media (prefers-reduced-motion: no-preference) { .codigo .ln.nova { animation: surge 0.9s ease-out; } }
+
+/* editor */
+.editor { display: grid; grid-template-columns: auto minmax(0, 1fr); background: var(--code-bg); border-radius: 8px; overflow: hidden; }
+.gutter { font-family: var(--font-mono); font-size: 17px; line-height: 1.6; color: var(--code-muted); text-align: right; padding: 12px 8px 12px 12px; user-select: none; white-space: pre; overflow: hidden; }
+.gutter .err { color: var(--halt); font-weight: 600; }
+textarea#programa {
+  font-family: var(--font-mono); font-size: 17px; line-height: 1.6; color: var(--code-ink); background: transparent;
+  border: 0; resize: vertical; min-height: 13.5em; padding: 12px 12px 12px 6px; white-space: pre; overflow: auto; tab-size: 4;
+  caret-color: var(--head); width: 100%;
+}
+textarea#programa:focus { outline: none; }
+.editor:focus-within { box-shadow: 0 0 0 3px var(--head); }
+.keypad { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.keypad button { padding: 0; min-height: 46px; font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600; }
+.keypad button.k-op { background: var(--accent-soft); }
+.keypad button.wide { grid-column: span 2; font-family: var(--font-body); font-size: 0.85rem; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--muted); }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.diag { font-size: 0.9rem; display: grid; gap: 4px; }
+.diag .ok { color: var(--ok); font-weight: 600; }
+.diag .bad { color: var(--halt); }
+
+details { border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.help { display: grid; gap: 8px; font-size: 0.95rem; margin-top: 8px; max-width: 65ch; }
+.help code, .mono { font-family: var(--font-mono); }
+.help code { background: var(--cell0); padding: 1px 5px; border-radius: 4px; }
+.quad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.quad div { border-radius: 8px; padding: 8px 4px; background: var(--cell0); display: grid; gap: 2px; }
+.quad b { font-family: var(--font-mono); font-size: 1.25rem; }
+.quad span { font-size: 0.72rem; color: var(--muted); line-height: 1.2; }
+.quad .q b { color: var(--accent); }
+.quad .op { background: var(--head); }
+.quad .op b, .quad .op span { color: var(--head-ink); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; min-height: 40px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.preview { font-family: var(--font-mono); font-size: 0.95rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* execução */
+.status { font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--cell0); color: var(--muted); white-space: nowrap; }
+.status.run { background: var(--accent-soft); color: var(--accent); }
+.status.halt { background: var(--ok-soft); color: var(--ok); }
+.status.limit { background: var(--warn-soft); color: var(--warn); }
+.status.error { background: var(--halt-soft); color: var(--halt); }
+.meter { display: flex; gap: 16px 22px; flex-wrap: wrap; align-items: baseline; }
+.meter .big { font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.meter .lbl { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.meter > div { display: grid; gap: 4px; }
+.badge-q { font-family: var(--font-mono); font-weight: 600; background: var(--code-bg); color: var(--code-ink); padding: 3px 10px; border-radius: 6px; font-size: 1.05rem; justify-self: start; }
+.instr { font-family: var(--font-mono); font-size: 1rem; }
+.tape-box { overflow-x: auto; overscroll-behavior-x: contain; padding: 54px 4px 10px; background: var(--bg); border-radius: 8px; scrollbar-width: thin; }
+.tape { display: flex; width: max-content; margin: 0 auto; }
+.cell { width: var(--cell); height: var(--cell); border: 2px solid var(--ink); margin-left: -2px; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 1.3rem; position: relative; background: var(--cell1); color: var(--ink); }
+.cell.zero { background: var(--cell0); color: var(--muted); }
+.cell.head { background: var(--head); color: var(--head-ink); }
+.cell .mk { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; }
+.cell .mk .st { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; background: var(--code-bg); color: var(--code-ink); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.cell .mk .tri { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 11px solid var(--head); }
+.cell.head.halted .mk .st { background: var(--halt); color: #FFFFFF; }
+.ends { display: grid; place-items: center; width: 30px; color: var(--muted); font-weight: 600; }
+.controls { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.controls button { padding: 6px 4px; font-size: 0.85rem; display: grid; justify-items: center; gap: 2px; line-height: 1.1; }
+.controls svg { width: 20px; height: 20px; }
+.speed { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); }
+.speed input { flex: 1; accent-color: var(--accent); min-width: 0; }
+.result { border-radius: 8px; padding: 12px 14px; background: var(--cell0); display: grid; gap: 4px; }
+.result.halt { background: var(--ok-soft); }
+.result.limit { background: var(--warn-soft); }
+.result.error { background: var(--halt-soft); }
+.result strong { font-size: 1.05rem; }
+.result .val { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; }
+.hist { max-height: 300px; overflow: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.55; white-space: pre; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+.hist .hq { color: var(--accent); font-weight: 600; }
+
+.tests { display: grid; gap: 4px; font-family: var(--font-mono); font-size: 0.9rem; }
+.tests .pass { color: var(--ok); }
+.tests .fail { color: var(--halt); }
+.tests .sum { font-family: var(--font-body); font-weight: 600; margin-top: 4px; }
+.task { background: var(--cell0); border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; }
+
+footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-width: 80ch; }
+.toast { font-size: 0.85rem; color: var(--ok); min-height: 1.2em; }
+@media (max-width: 420px) {
+  :root { --cell: 40px; }
+  .mini { --cell: 36px; }
+  .card { padding: 14px 12px; }
+  .controls button span { font-size: 0.75rem; }
+  .codigo { font-size: 15px; }
+  .opcao { font-size: 1.08rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Minicurso · Como pensa um computador?</span>
+    <h1>Turing de Bolso</h1>
+    <p class="lead">Comece pelo aquecimento, monte três máquinas escolhendo as linhas do código e depois escreva as suas no simulador. Tudo em quádruplas, como em Carnielli e Epstein.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Partes do Turing de Bolso">
+    <button type="button" role="tab" id="tab-aq" aria-controls="painel-aq" aria-selected="true">Aquecimento<small id="subAq">3 questões</small></button>
+    <button type="button" role="tab" id="tab-des" aria-controls="painel-des" aria-selected="false" tabindex="-1">Desafios<small id="subDes">bloqueados</small></button>
+    <button type="button" role="tab" id="tab-sim" aria-controls="painel-sim" aria-selected="false" tabindex="-1">Simulador<small>escreva e rode</small></button>
+  </nav>
+
+  <section class="painel" id="painel-aq" role="tabpanel" aria-labelledby="tab-aq">
+    <div class="guia">
+      <div class="card" id="aqCard" aria-live="off"></div>
+    </div>
+  </section>
+
+  <section class="painel" id="painel-des" role="tabpanel" aria-labelledby="tab-des" hidden>
+    <div class="guia" id="desGuia"></div>
+  </section>
+
+  <div class="painel" id="painel-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+  <main class="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="t-maquina">
+        <div class="card-head">
+          <h2 id="t-maquina">1. Máquina</h2>
+          <div class="field">
+            <label for="exemplo">Carregar exemplo</label>
+            <select id="exemplo">
+              <option value="">Escolha...</option>
+              <option value="soma">Soma: f(m, n) = m + n</option>
+              <option value="sucessor">Sucessor: S(n) = n + 1</option>
+              <option value="direita">Sucessor pela direita</option>
+              <option value="laco">Laço infinito (nunca para)</option>
+            </select>
+          </div>
+        </div>
+        <div class="editor">
+          <div class="gutter" id="gutter" aria-hidden="true">1</div>
+          <textarea id="programa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Programa em quádruplas, uma instrução por linha"></textarea>
+        </div>
+        <div class="keypad" id="keypad" aria-label="Teclado de quádruplas">
+          <button type="button" data-k="q">q</button>
+          <button type="button" data-k="0">0</button>
+          <button type="button" data-k="1">1</button>
+          <button type="button" class="k-op" data-k="D">D</button>
+          <button type="button" class="k-op" data-k="E">E</button>
+          <button type="button" data-k="2">2</button>
+          <button type="button" data-k="3">3</button>
+          <button type="button" data-k="4">4</button>
+          <button type="button" data-k="5">5</button>
+          <button type="button" data-k="6">6</button>
+          <button type="button" data-k="7">7</button>
+          <button type="button" data-k="8">8</button>
+          <button type="button" data-k="9">9</button>
+          <button type="button" class="wide" data-k=" ">espaço</button>
+          <button type="button" data-k="BS" aria-label="Apagar">⌫</button>
+          <button type="button" class="wide" data-k="NL" style="grid-column: span 8">nova linha</button>
+        </div>
+        <label class="check" for="tecladoNativo"><input type="checkbox" id="tecladoNativo"> Usar o teclado do celular</label>
+        <div class="diag" id="diag" aria-live="polite"></div>
+        <div class="row">
+          <button type="button" id="copiar">Copiar programa</button>
+          <button type="button" id="limpar">Limpar</button>
+        </div>
+        <div class="toast" id="toast" aria-live="polite"></div>
+        <details>
+          <summary>Como escrever (notação de Carnielli e Epstein)</summary>
+          <div class="help">
+            <p>Cada linha é uma instrução, a <b>quádrupla</b>:</p>
+            <div class="quad">
+              <div class="q"><b>q3</b><span>estado atual</span></div>
+              <div><b>1</b><span>símbolo lido (0 ou 1)</span></div>
+              <div class="op"><b>D</b><span>operação</span></div>
+              <div class="q"><b>q4</b><span>próximo estado</span></div>
+            </div>
+            <p>Lê-se: “no estado q3, lendo 1, mova uma casa para a direita e vá para q4”.</p>
+            <p>Operações: <code>1</code> escreve um traço, <code>0</code> apaga, <code>D</code> move para a direita, <code>E</code> move para a esquerda. Cada instrução faz uma única ação.</p>
+            <p>O alfabeto é {0, 1}: 0 é a célula em branco. O número n é escrito com n + 1 traços (0 é <code>1</code>, 2 é <code>111</code>); argumentos são separados por um único 0.</p>
+            <p>A máquina começa no estado inicial (q1), sobre o traço mais à esquerda, e <b>para</b> quando não existe instrução para o par (estado, símbolo lido). Não pode haver duas instruções para o mesmo par.</p>
+            <p>Comentários começam com <code>#</code>. Vírgulas e parênteses são ignorados, então <code>(q1, 1, D, q2)</code> também vale.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="t-entrada">
+        <div class="card-head">
+          <h2 id="t-entrada">2. Entrada</h2>
+          <div class="seg" role="group" aria-label="Tipo de entrada">
+            <button type="button" id="modoNum" aria-pressed="true">Números</button>
+            <button type="button" id="modoFita" aria-pressed="false">Fita</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex: 2 1 180px">
+            <label for="entrada" id="entradaLbl">Argumentos (ex.: 1, 2)</label>
+            <input type="text" id="entrada" inputmode="numeric" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field" style="flex: 1 1 90px">
+            <label for="inicial">Estado inicial</label>
+            <input type="text" id="inicial" value="q1" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="field" style="flex: 1 1 110px">
+            <label for="limite">Limite de passos</label>
+            <input type="number" id="limite" value="10000" min="1" max="1000000" step="1">
+          </div>
+        </div>
+        <p class="preview" id="preview"></p>
+        <button type="button" class="primary" id="executar">Executar e ver a fita</button>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card" id="sec-exec" aria-labelledby="t-exec">
+        <div class="card-head">
+          <h2 id="t-exec">3. Execução</h2>
+          <span class="status" id="status">Pronta</span>
+        </div>
+        <div class="meter">
+          <div><span class="lbl">Passo</span><span class="big" id="passo">0</span></div>
+          <div><span class="lbl">Estado</span><span class="badge-q" id="estado">q1</span></div>
+          <div style="min-width:0"><span class="lbl" id="instrLbl">Próxima instrução</span><span class="instr" id="instr">-</span></div>
+        </div>
+        <div class="tape-box" id="tapeBox" role="img" aria-label="Fita da máquina">
+          <div class="tape" id="tape"></div>
+        </div>
+        <div class="controls">
+          <button type="button" id="bReset" aria-label="Voltar ao início"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Início</span></button>
+          <button type="button" id="bBack" aria-label="Passo anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>Voltar</span></button>
+          <button type="button" id="bStep" aria-label="Próximo passo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>Passo</span></button>
+          <button type="button" id="bRun" class="primary" aria-label="Executar continuamente"><svg viewBox="0 0 24 24" fill="currentColor" id="runIcon"><path d="M7 4l13 8-13 8z"/></svg><span id="runLbl">Rodar</span></button>
+          <button type="button" id="bEnd" aria-label="Executar até parar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18l6-6-6-6"/><path d="M13 18l6-6-6-6"/></svg><span>Até o fim</span></button>
+        </div>
+        <div class="speed"><label for="vel" style="color:inherit;font-weight:500">Velocidade</label><input type="range" id="vel" min="1" max="30" value="4"><span id="velLbl" class="mono">4/s</span></div>
+        <div class="result" id="result" aria-live="polite"></div>
+        <details id="histBox">
+          <summary>Histórico de configurações</summary>
+          <div class="hist" id="hist"></div>
+        </details>
+      </section>
+
+      <section class="card" aria-labelledby="t-desafios">
+        <div class="card-head">
+          <h2 id="t-desafios">4. Correção automática</h2>
+          <div class="field">
+            <label for="desafio">Escolha o desafio</label>
+            <select id="desafio"></select>
+          </div>
+        </div>
+        <p class="task" id="enunciado"></p>
+        <button type="button" id="testar">Testar minha máquina</button>
+        <div class="tests" id="testes" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+  </div>
+
+  <footer>
+    <p>Notação: CARNIELLI, W. A.; EPSTEIN, R. L. Computabilidade, funções computáveis, lógica e os fundamentos da matemática. 2. ed. rev. São Paulo: Editora UNESP, 2009, cap. 9.</p>
+    <p>Modelo original: TURING, A. M. On computable numbers, with an application to the Entscheidungsproblem. Proceedings of the London Mathematical Society, s. 2, v. 42, n. 1, p. 230-265, 1937.</p>
+    <p>Respostas e programas ficam salvos apenas neste navegador.</p>
+  </footer>
+</div>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  const EXEMPLOS = {
+    soma: {
+      prog: "# Soma: f(m, n) = m + n\n# entrada: m+1 traços, um 0, n+1 traços\nq1 1 D q1   # percorre o 1º bloco\nq1 0 1 q2   # preenche o separador\nq2 1 D q2   # percorre o 2º bloco\nq2 0 E q3   # achou o fim: volta\nq3 1 0 q3   # apaga um traço\nq3 0 E q4\nq4 1 0 q4   # apaga outro traço\nq4 0 E q5\nq5 1 E q5   # volta ao início\nq5 0 D q6   # para em q6\n",
+      entrada: "1, 2"
+    },
+    sucessor: {
+      prog: "# Sucessor: S(n) = n + 1\nq1 1 E q2   # anda uma casa à esquerda\nq2 0 1 q2   # escreve 1; sem instrução para (q2, 1): para\n",
+      entrada: "2"
+    },
+    direita: {
+      prog: "# Outra máquina para o sucessor\nq1 1 D q1   # anda até o fim do bloco\nq1 0 1 q2   # escreve 1 no primeiro branco\n",
+      entrada: "2"
+    },
+    laco: {
+      prog: "# Esta máquina nunca para\nq1 1 D q1\nq1 0 D q1   # sempre há instrução: anda para sempre\n",
+      entrada: "1"
+    }
+  };
+
+  const DESAFIOS = [
+    { id: "sucessor", nome: "Sucessor: S(n) = n + 1", txt: "Aquecimento. A entrada é n (n + 1 traços). A fita deve terminar com n + 1, isto é, n + 2 traços.", aridade: 1, f: (n) => n + 1, casos: [0, 1, 2, 3, 5] },
+    { id: "zero", nome: "Função zero: Z(n) = 0", txt: "Para qualquer n, a fita deve terminar com um único traço (a representação de 0). Dica: apague tudo, menos um traço.", aridade: 1, f: () => 0, casos: [0, 1, 2, 3, 5] },
+    { id: "mais2", nome: "f(n) = n + 2", txt: "A fita deve terminar com n + 3 traços. Dica: adapte o sucessor.", aridade: 1, f: (n) => n + 2, casos: [0, 1, 2, 4] },
+    { id: "proj", nome: "Projeção: P(m, n) = m", txt: "A entrada tem dois argumentos (m + 1 traços, um 0, n + 1 traços). A fita deve terminar só com o primeiro bloco.", aridade: 2, f: (m) => m, casos: [[0, 0], [0, 2], [1, 1], [2, 0], [3, 2]] },
+    { id: "soma", nome: "Soma: f(m, n) = m + n", txt: "Escreva a sua versão da soma (há muitas máquinas diferentes que funcionam).", aridade: 2, f: (m, n) => m + n, casos: [[0, 0], [0, 3], [1, 2], [3, 1], [4, 4]] },
+    { id: "dobro", nome: "Dobro: f(n) = 2n", txt: "Desafio. Só com 0 e 1: tire um traço da entrada, crie à direita um bloco com um traço e repita “apaga um traço da entrada, acrescenta dois ao bloco da direita”.", aridade: 1, f: (n) => 2 * n, casos: [0, 1, 2, 3, 5] }
+  ];
+
+  // ---------- armazenamento local ----------
+  const KEY = "turing-de-bolso-v1";
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ prog: ta.value, modo, entrada: inEntrada.value, inicial: inInicial.value, nativo: chkNativo.checked, desafio: selDesafio.value })); } catch (e) { /* ignorado */ }
+  }
+
+  // ---------- leitura do programa ----------
+  function parse(texto) {
+    const regras = new Map();
+    const erros = [];
+    const linhas = texto.split("\n");
+    let n = 0;
+    linhas.forEach((bruta, i) => {
+      const num = i + 1;
+      let l = bruta.split("#")[0].split("//")[0];
+      l = l.replace(/[(),;]/g, " ").trim();
+      if (!l) return;
+      const t = l.split(/\s+/);
+      if (t.length !== 4) { erros.push({ linha: num, msg: `esperava 4 itens (q S Op q'), encontrei ${t.length}.` }); return; }
+      const [q, s, opRaw, q2] = t;
+      const op = opRaw.toUpperCase();
+      if (s !== "0" && s !== "1") { erros.push({ linha: num, msg: `o símbolo lido deve ser 0 ou 1 (encontrei “${s}”).` }); return; }
+      if (op === "R" || op === "L") { erros.push({ linha: num, msg: `use D (direita) ou E (esquerda) no lugar de “${opRaw}”.` }); return; }
+      if (!["0", "1", "D", "E"].includes(op)) { erros.push({ linha: num, msg: `a operação deve ser 1, 0, D ou E (encontrei “${opRaw}”).` }); return; }
+      const k = q + "|" + s;
+      if (regras.has(k)) { erros.push({ linha: num, msg: `já existe instrução para (${q}, ${s}) na linha ${regras.get(k).linha}; a máquina precisa ser determinística.` }); return; }
+      regras.set(k, { q, s, op, q2, linha: num, txt: `${q} ${s} ${op} ${q2}` });
+      n++;
+    });
+    return { regras, erros, n };
+  }
+
+  // ---------- entrada ----------
+  function lerEntrada() {
+    const v = inEntrada.value.trim();
+    if (modo === "num") {
+      if (!v) return { erro: "Digite pelo menos um número (ex.: 2 ou 1, 2)." };
+      const partes = v.split(/[\s,;]+/).filter(Boolean);
+      const nums = [];
+      for (const p of partes) {
+        if (!/^\d+$/.test(p)) return { erro: `“${p}” não é um número natural.` };
+        const x = parseInt(p, 10);
+        if (x > 200) return { erro: "Use números até 200 para a fita caber na tela." };
+        nums.push(x);
+      }
+      const fita = nums.map((x) => "1".repeat(x + 1)).join("0");
+      return { nums, fita };
+    }
+    const f = v.replace(/\s+/g, "");
+    if (!f) return { erro: "Digite a fita usando apenas 0 e 1." };
+    if (!/^[01]+$/.test(f)) return { erro: "A fita só pode ter 0 e 1." };
+    return { nums: null, fita: f };
+  }
+
+  // ---------- máquina ----------
+  const M = { regras: new Map(), fita: new Map(), pos: 0, q: "q1", passo: 0, log: [], parou: false, limite: false, pronto: false, nums: null, ini: "q1" };
+
+  function carregar() {
+    pausar();
+    const p = parse(ta.value);
+    M.regras = p.regras;
+    const e = lerEntrada();
+    M.fita = new Map();
+    M.pos = 0; M.passo = 0; M.log = []; M.parou = false; M.limite = false;
+    M.ini = (inInicial.value || "q1").trim() || "q1";
+    M.q = M.ini;
+    M.nums = null;
+    M.erroEntrada = e.erro || null;
+    M.erroProg = p.erros.length > 0;
+    if (!e.erro) {
+      M.nums = e.nums;
+      const off = e.fita.indexOf("1");
+      const base = off < 0 ? 0 : off;
+      for (let i = 0; i < e.fita.length; i++) if (e.fita[i] === "1") M.fita.set(i - base, "1");
+      preview.textContent = "Fita inicial: " + e.fita.replace(/0/g, " 0 ").replace(/\s+/g, " ").trim() + (e.nums ? `   (${e.nums.map((x) => x + 1 + " traço" + (x ? "s" : "")).join(" + separador + ")})` : "");
+    } else {
+      preview.textContent = e.erro;
+    }
+    M.pronto = !M.erroEntrada && !M.erroProg && p.n > 0;
+    if (M.pronto && !regraAtual()) M.parou = true;
+    mostrarDiag(p);
+    render(true);
+  }
+
+  function regraAtual() { return M.regras.get(M.q + "|" + (M.fita.get(M.pos) || "0")); }
+
+  function passo() {
+    if (!M.pronto || M.parou) return false;
+    const lim = Math.max(1, parseInt(inLimite.value, 10) || 10000);
+    if (M.passo >= lim) { M.limite = true; return false; }
+    const r = regraAtual();
+    if (!r) { M.parou = true; return false; }
+    const rec = { pos: M.pos, q: M.q, r, w: null };
+    if (r.op === "1" || r.op === "0") {
+      const antigo = M.fita.get(M.pos) || "0";
+      rec.w = antigo;
+      if (r.op === "1") M.fita.set(M.pos, "1"); else M.fita.delete(M.pos);
+    } else {
+      M.pos += r.op === "D" ? 1 : -1;
+    }
+    M.q = r.q2;
+    M.log.push(rec);
+    M.passo++;
+    if (!regraAtual()) M.parou = true;
+    return true;
+  }
+
+  function voltar() {
+    const rec = M.log.pop();
+    if (!rec) return;
+    if (rec.w !== null) { if (rec.w === "1") M.fita.set(rec.pos, "1"); else M.fita.delete(rec.pos); }
+    M.pos = rec.pos; M.q = rec.q; M.passo--; M.parou = false; M.limite = false;
+  }
+
+  // ---------- execução contínua ----------
+  let timer = null;
+  function rodando() { return timer !== null; }
+  function pausar() { if (timer) { clearInterval(timer); timer = null; } atualizarBotaoRodar(); }
+  function rodar() {
+    if (!M.pronto) return;
+    if (M.parou || M.limite) { carregar(); }
+    const v = parseInt(inVel.value, 10);
+    timer = setInterval(() => {
+      const andou = passo();
+      render(false);
+      if (!andou || M.parou || M.limite) { pausar(); render(false); }
+    }, Math.round(1000 / v));
+    atualizarBotaoRodar();
+    render(false);
+  }
+  function ateFim() {
+    pausar();
+    if (!M.pronto) return;
+    const lim = Math.max(1, parseInt(inLimite.value, 10) || 10000);
+    let guard = 0;
+    while (!M.parou && !M.limite && guard <= lim + 1) { if (!passo()) break; guard++; }
+    if (!M.parou && M.passo >= lim) M.limite = true;
+    render(true);
+  }
+  function atualizarBotaoRodar() {
+    $("runLbl").textContent = rodando() ? "Pausar" : "Rodar";
+    $("runIcon").innerHTML = rodando() ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4l13 8-13 8z"/>';
+  }
+
+  // ---------- desenho ----------
+  const reduz = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function limitesFita() {
+    let a = M.pos, b = M.pos;
+    for (const k of M.fita.keys()) { if (k < a) a = k; if (k > b) b = k; }
+    return [a, b];
+  }
+
+  function render(salto) {
+    const st = $("status");
+    const res = $("result");
+    st.className = "status";
+    res.className = "result";
+    if (M.erroProg) { st.textContent = "Corrija o programa"; st.classList.add("error"); }
+    else if (M.erroEntrada) { st.textContent = "Corrija a entrada"; st.classList.add("error"); }
+    else if (!M.pronto) { st.textContent = "Sem instruções"; st.classList.add("error"); }
+    else if (rodando()) { st.textContent = "Executando"; st.classList.add("run"); }
+    else if (M.parou) { st.textContent = "Parou"; st.classList.add("halt"); }
+    else if (M.limite) { st.textContent = "Limite atingido"; st.classList.add("limit"); }
+    else { st.textContent = M.passo ? "Pausada" : "Pronta"; }
+
+    $("passo").textContent = M.passo.toLocaleString("pt-BR");
+    $("estado").textContent = M.q;
+    const r = M.pronto ? regraAtual() : null;
+    $("instrLbl").textContent = M.parou ? "Nenhuma instrução para" : "Próxima instrução";
+    $("instr").textContent = M.parou ? `(${M.q}, ${M.fita.get(M.pos) || "0"})` : (r ? r.txt + "   (linha " + r.linha + ")" : "-");
+
+    // fita
+    const box = $("tapeBox");
+    const cellW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cell")) || 44;
+    const cabe = Math.max(9, Math.floor((box.clientWidth - 60) / (cellW - 2)));
+    let [a, b] = limitesFita();
+    a -= 2; b += 2;
+    while (b - a + 1 < cabe) { a--; if (b - a + 1 < cabe) b++; }
+    const tape = $("tape");
+    const frag = document.createDocumentFragment();
+    const e1 = document.createElement("div"); e1.className = "ends"; e1.textContent = "...";
+    frag.appendChild(e1);
+    let headEl = null;
+    for (let i = a; i <= b; i++) {
+      const s = M.fita.get(i) || "0";
+      const c = document.createElement("div");
+      c.className = "cell" + (s === "0" ? " zero" : "") + (i === M.pos ? " head" : "") + (i === M.pos && M.parou ? " halted" : "");
+      c.textContent = s;
+      if (i === M.pos) {
+        const mk = document.createElement("div"); mk.className = "mk";
+        const stq = document.createElement("span"); stq.className = "st"; stq.textContent = M.q;
+        const tri = document.createElement("span"); tri.className = "tri";
+        mk.appendChild(stq); mk.appendChild(tri); c.appendChild(mk);
+        headEl = c;
+      }
+      frag.appendChild(c);
+    }
+    const e2 = document.createElement("div"); e2.className = "ends"; e2.textContent = "...";
+    frag.appendChild(e2);
+    tape.replaceChildren(frag);
+    if (headEl) {
+      const alvo = headEl.offsetLeft - box.clientWidth / 2 + headEl.offsetWidth / 2;
+      box.scrollTo({ left: alvo, behavior: salto || reduz || rodando() ? "auto" : "smooth" });
+    }
+    box.setAttribute("aria-label", `Fita: ${conteudoFita() || "vazia"}; cabeçote na célula ${M.pos}, estado ${M.q}`);
+
+    // resultado
+    if (M.erroProg) { res.classList.add("error"); res.innerHTML = "<strong>O programa tem erros.</strong><span>Veja as mensagens abaixo do editor.</span>"; }
+    else if (M.erroEntrada) { res.classList.add("error"); res.innerHTML = "<strong>Entrada inválida.</strong><span>" + esc(M.erroEntrada) + "</span>"; }
+    else if (!M.pronto) { res.innerHTML = "<strong>Escreva pelo menos uma instrução.</strong>"; }
+    else if (M.parou) {
+      res.classList.add("halt");
+      res.innerHTML = `<strong>Parou no passo ${M.passo.toLocaleString("pt-BR")}: não há instrução para (${esc(M.q)}, ${M.fita.get(M.pos) || "0"}).</strong>` + leitura();
+    } else if (M.limite) {
+      res.classList.add("limit");
+      res.innerHTML = `<strong>Chegou a ${M.passo.toLocaleString("pt-BR")} passos sem parar.</strong><span>A máquina pode estar em um laço infinito, ou só precisa de mais passos: aumente o limite. Nenhum programa consegue decidir isso em todos os casos (problema da parada).</span>`;
+    } else {
+      res.innerHTML = M.passo === 0
+        ? "<strong>Pronta para executar.</strong><span>Toque em Passo para avançar uma instrução, ou em Rodar.</span>"
+        : "<strong>Em execução.</strong><span>Fita atual: " + esc(conteudoFita() || "vazia") + "</span>";
+    }
+    if ($("histBox").open && !rodando()) historico();
+  }
+
+  function conteudoFita() {
+    if (!M.fita.size) return "";
+    const ks = [...M.fita.keys()];
+    const a = Math.min(...ks), b = Math.max(...ks);
+    let t = "";
+    for (let i = a; i <= b; i++) t += M.fita.get(i) || "0";
+    return t;
+  }
+
+  function lerValor() {
+    const t = conteudoFita();
+    if (!t) return { txt: t, val: null, motivo: "a fita ficou vazia, e isso não representa número algum" };
+    if (/^1+$/.test(t)) return { txt: t, val: t.length - 1 };
+    return { txt: t, val: null, motivo: "a fita não ficou com um único bloco de traços" };
+  }
+
+  function leitura() {
+    const v = lerValor();
+    if (v.val === null) return `<span>Fita final: <span class="mono">${esc(v.txt || "vazia")}</span>. Não dá para ler um número: ${v.motivo}.</span>`;
+    const f = M.nums ? `f(${M.nums.join(", ")}) = ` : "";
+    return `<span>Fita final: <span class="mono">${v.txt}</span> (${v.txt.length} traço${v.txt.length > 1 ? "s" : ""})</span><span class="val">${f}${v.val}</span>`;
+  }
+
+  function historico() {
+    // refaz as configurações a partir da fita inicial (desfazendo o registro numa cópia)
+    const max = 400;
+    const g = new Map(M.fita);
+    for (let k = M.log.length - 1; k >= 0; k--) {
+      const rec = M.log[k];
+      if (rec.w !== null) { if (rec.w === "1") g.set(rec.pos, "1"); else g.delete(rec.pos); }
+    }
+    let pos = M.log.length ? M.log[0].pos : M.pos;
+    let q = M.log.length ? M.log[0].q : M.q;
+    let a = Infinity, b = -Infinity;
+    const snaps = [];
+    const snap = () => { snaps.push({ f: new Map(g), pos, q }); for (const k of g.keys()) { a = Math.min(a, k); b = Math.max(b, k); } a = Math.min(a, pos); b = Math.max(b, pos); };
+    snap();
+    for (let k = 0; k < M.log.length && snaps.length < max; k++) {
+      const rec = M.log[k], r = rec.r;
+      if (r.op === "1") g.set(rec.pos, "1"); else if (r.op === "0") g.delete(rec.pos); else pos = rec.pos + (r.op === "D" ? 1 : -1);
+      q = r.q2;
+      snap();
+    }
+    const linhas = snaps.map((s, i) => {
+      let t = "";
+      for (let j = a - 1; j <= b + 1; j++) {
+        const sym = s.f.get(j) || "0";
+        t += j === s.pos ? `<span class="hq">${esc(s.q)}</span> ${sym} ` : sym + " ";
+      }
+      return String(i).padStart(4, " ") + ":  " + t;
+    });
+    if (M.log.length + 1 > max) linhas.push(`... (mostrando as primeiras ${max} configurações de ${M.log.length + 1})`);
+    $("hist").innerHTML = linhas.join("\n");
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  // ---------- diagnóstico do editor ----------
+  function mostrarDiag(p) {
+    const d = $("diag");
+    const errLinhas = new Set(p.erros.map((e) => e.linha));
+    const total = ta.value.split("\n").length;
+    let g = "";
+    for (let i = 1; i <= total; i++) g += (errLinhas.has(i) ? `<span class="err">${i}</span>` : i) + (i < total ? "\n" : "");
+    $("gutter").innerHTML = g;
+    syncGutter();
+    if (p.erros.length) {
+      d.innerHTML = p.erros.slice(0, 6).map((e) => `<span class="bad">Linha ${e.linha}: ${esc(e.msg)}</span>`).join("") + (p.erros.length > 6 ? `<span class="bad">... e mais ${p.erros.length - 6} erro(s).</span>` : "");
+    } else if (p.n === 0) {
+      d.innerHTML = `<span class="bad">Nenhuma instrução ainda. Escreva, por exemplo: q1 1 D q2</span>`;
+    } else {
+      const estados = new Set(); for (const r of p.regras.values()) { estados.add(r.q); estados.add(r.q2); }
+      d.innerHTML = `<span class="ok">${p.n} instruç${p.n > 1 ? "ões" : "ão"} válida${p.n > 1 ? "s" : ""}, ${estados.size} estado${estados.size > 1 ? "s" : ""}.</span>`;
+    }
+  }
+  function syncGutter() { $("gutter").scrollTop = ta.scrollTop; }
+
+  // ---------- desafios ----------
+  function mostrarDesafio() {
+    const d = DESAFIOS.find((x) => x.id === selDesafio.value) || DESAFIOS[0];
+    $("enunciado").textContent = d.txt;
+    $("testes").innerHTML = "";
+  }
+  function testar() {
+    const d = DESAFIOS.find((x) => x.id === selDesafio.value) || DESAFIOS[0];
+    const p = parse(ta.value);
+    const out = $("testes");
+    if (p.erros.length || p.n === 0) { out.innerHTML = `<span class="fail">Corrija o programa antes de testar.</span>`; return; }
+    const ini = (inInicial.value || "q1").trim() || "q1";
+    let ok = 0;
+    const linhas = d.casos.map((c) => {
+      const args = Array.isArray(c) ? c : [c];
+      const fitaStr = args.map((x) => "1".repeat(x + 1)).join("0");
+      const fita = new Map();
+      for (let i = 0; i < fitaStr.length; i++) if (fitaStr[i] === "1") fita.set(i, "1");
+      let pos = 0, q = ini, n = 0, parou = false;
+      while (n < 100000) {
+        const r = p.regras.get(q + "|" + (fita.get(pos) || "0"));
+        if (!r) { parou = true; break; }
+        if (r.op === "1") fita.set(pos, "1"); else if (r.op === "0") fita.delete(pos); else pos += r.op === "D" ? 1 : -1;
+        q = r.q2; n++;
+      }
+      let obtido;
+      if (!parou) obtido = "não parou em 100.000 passos";
+      else {
+        const ks = [...fita.keys()];
+        let t = "";
+        if (ks.length) { const a = Math.min(...ks), b = Math.max(...ks); for (let i = a; i <= b; i++) t += fita.get(i) || "0"; }
+        obtido = /^1+$/.test(t) ? t.length - 1 : (t ? "fita " + t : "fita vazia");
+      }
+      const esperado = d.f(...args);
+      const certo = obtido === esperado;
+      if (certo) ok++;
+      return `<span class="${certo ? "pass" : "fail"}">${certo ? "✔" : "✘"} f(${args.join(", ")}): esperado ${esperado}, obtido ${esc(String(obtido))}${parou ? ` (${n} passos)` : ""}</span>`;
+    });
+    linhas.push(`<span class="sum">${ok === d.casos.length ? "Tudo certo! Sua máquina passou em todos os testes." : `${ok} de ${d.casos.length} testes corretos. Reveja a máquina e tente de novo.`}</span>`);
+    out.innerHTML = linhas.join("");
+  }
+
+  // ---------- elementos e eventos ----------
+  const ta = $("programa"), inEntrada = $("entrada"), inInicial = $("inicial"), inLimite = $("limite"), inVel = $("vel"), preview = $("preview"), chkNativo = $("tecladoNativo"), selDesafio = $("desafio");
+  let modo = "num";
+
+  DESAFIOS.forEach((d) => { const o = document.createElement("option"); o.value = d.id; o.textContent = d.nome; selDesafio.appendChild(o); });
+
+  function setModo(m) {
+    modo = m;
+    $("modoNum").setAttribute("aria-pressed", m === "num" ? "true" : "false");
+    $("modoFita").setAttribute("aria-pressed", m === "fita" ? "true" : "false");
+    $("entradaLbl").textContent = m === "num" ? "Argumentos (ex.: 1, 2)" : "Fita inicial com 0 e 1 (ex.: 1101)";
+  }
+
+  function teclado() {
+    const toque = window.matchMedia("(pointer: coarse)").matches;
+    ta.inputMode = chkNativo.checked || !toque ? "text" : "none";
+    $("keypad").hidden = false;
+  }
+
+  let deb = null;
+  function mudou() { clearTimeout(deb); deb = setTimeout(() => { carregar(); save(); }, 250); }
+
+  ta.addEventListener("input", () => { mostrarDiag(parse(ta.value)); mudou(); });
+  ta.addEventListener("scroll", syncGutter);
+  [inEntrada, inInicial, inLimite].forEach((el) => el.addEventListener("input", mudou));
+  $("modoNum").addEventListener("click", () => { setModo("num"); inEntrada.inputMode = "numeric"; carregar(); save(); });
+  $("modoFita").addEventListener("click", () => { setModo("fita"); inEntrada.inputMode = "numeric"; carregar(); save(); });
+  inVel.addEventListener("input", () => { $("velLbl").textContent = inVel.value + "/s"; if (rodando()) { pausar(); rodar(); } });
+  chkNativo.addEventListener("change", () => { teclado(); save(); ta.blur(); ta.focus(); });
+
+  $("keypad").addEventListener("pointerdown", (e) => { if (e.target.closest("button")) e.preventDefault(); });
+  $("keypad").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const k = b.dataset.k;
+    const ini = ta.selectionStart, fim = ta.selectionEnd;
+    if (k === "BS") {
+      if (ini !== fim) ta.setRangeText("", ini, fim, "end");
+      else if (ini > 0) ta.setRangeText("", ini - 1, ini, "end");
+    } else {
+      ta.setRangeText(k === "NL" ? "\n" : k, ini, fim, "end");
+    }
+    ta.focus();
+    ta.dispatchEvent(new Event("input"));
+  });
+
+  $("exemplo").addEventListener("change", (e) => {
+    const ex = EXEMPLOS[e.target.value]; if (!ex) return;
+    ta.value = ex.prog; setModo("num"); inEntrada.value = ex.entrada; inInicial.value = "q1";
+    e.target.value = "";
+    carregar(); save();
+  });
+  $("limpar").addEventListener("click", () => { ta.value = ""; carregar(); save(); ta.focus(); });
+  $("copiar").addEventListener("click", () => {
+    const t = ta.value;
+    const done = () => { $("toast").textContent = "Programa copiado. Cole no chat ou no simulador para compartilhar."; setTimeout(() => ($("toast").textContent = ""), 4000); };
+    const fallback = () => { ta.focus(); ta.select(); $("toast").textContent = "Texto selecionado: use Copiar do seu aparelho."; };
+    try { navigator.clipboard.writeText(t).then(done, fallback); } catch (err) { fallback(); }
+  });
+
+  $("executar").addEventListener("click", () => {
+    carregar();
+    $("sec-exec").scrollIntoView({ behavior: reduz ? "auto" : "smooth", block: "start" });
+    setTimeout(rodar, reduz ? 0 : 450);
+  });
+  $("bReset").addEventListener("click", () => { carregar(); });
+  $("bBack").addEventListener("click", () => { pausar(); voltar(); render(false); });
+  $("bStep").addEventListener("click", () => { pausar(); if (M.parou || M.limite) return; passo(); if (!M.parou && M.passo >= (parseInt(inLimite.value, 10) || 10000)) M.limite = true; render(false); });
+  $("bRun").addEventListener("click", () => { if (rodando()) { pausar(); render(false); } else rodar(); });
+  $("bEnd").addEventListener("click", ateFim);
+  $("histBox").addEventListener("toggle", () => { if ($("histBox").open) historico(); });
+  selDesafio.addEventListener("change", () => { mostrarDesafio(); save(); });
+  $("testar").addEventListener("click", testar);
+  window.addEventListener("resize", () => { if (!$("painel-sim").hidden) render(true); });
+
+  // ---------- interface para as outras partes da página ----------
+  window.TuringBolso = {
+    redesenhar() { render(true); },
+    pausar() { pausar(); render(false); },
+    abrir(prog, entrada, desafioId) {
+      ta.value = prog; setModo("num"); inEntrada.value = entrada; inInicial.value = "q1";
+      if (desafioId && DESAFIOS.some((d) => d.id === desafioId)) { selDesafio.value = desafioId; mostrarDesafio(); }
+      carregar(); save();
+    }
+  };
+
+  // ---------- estado inicial ----------
+  const s = load();
+  if (s && typeof s.prog === "string") {
+    ta.value = s.prog;
+    setModo(s.modo === "fita" ? "fita" : "num");
+    inEntrada.value = s.entrada || "";
+    inInicial.value = s.inicial || "q1";
+    chkNativo.checked = !!s.nativo;
+    if (s.desafio && DESAFIOS.some((d) => d.id === s.desafio)) selDesafio.value = s.desafio;
+  } else {
+    ta.value = EXEMPLOS.soma.prog;
+    inEntrada.value = EXEMPLOS.soma.entrada;
+    setModo("num");
+  }
+  teclado();
+  mostrarDesafio();
+  carregar();
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const reduz = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /*DADOS-INICIO*/
+  // Aquecimento: dada a operação e parte do código, escolher a próxima linha.
+  // tipo (usado só na verificação automática): conflito, naoUsada, laco, errado.
+  const AQUEC = [
+    {
+      id: "suc",
+      titulo: "Sucessor: S(n) = n + 1",
+      desc: "A entrada n vem escrita com n + 1 traços. Para chegar a n + 1, basta acrescentar um traço. Esta máquina acrescenta o traço à esquerda do bloco.",
+      demo: [2],
+      dado: [["q1 1 E q2", "anda uma casa à esquerda"]],
+      correta: ["q2 0 1 q2", "escreve um traço e para"],
+      resto: [],
+      casos: [0, 1, 2, 3], f: (n) => n + 1,
+      porque: "Depois de andar, a máquina está em q2 sobre uma casa em branco e escreve ali o traço que faltava. Como não há instrução para (q2, 1), ela para com n + 2 traços, que representam n + 1.",
+      erradas: [
+        { l: "q2 1 1 q2", tipo: "naoUsada", porque: "Depois de andar para a esquerda, a máquina lê 0 (casa em branco), não 1. Esta instrução nunca seria usada: a máquina pararia em (q2, 0) sem escrever nada, e a fita continuaria valendo n." },
+        { l: "q2 0 E q2", tipo: "laco", porque: "A máquina continuaria andando para a esquerda, de casa em branco em casa em branco, sem nunca parar." },
+        { l: "q1 1 1 q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Com duas instruções para o mesmo par (estado, símbolo lido), a máquina não saberia qual seguir: ela precisa ser determinística." }
+      ]
+    },
+    {
+      id: "dir",
+      titulo: "Sucessor pela direita",
+      desc: "Outra máquina para S(n) = n + 1: agora o traço novo entra à direita do bloco. A primeira linha leva a máquina até o fim do bloco.",
+      demo: [2],
+      dado: [["q1 1 D q1", "anda até o fim do bloco"]],
+      correta: ["q1 0 1 q2", "escreve 1 no primeiro branco"],
+      resto: [],
+      casos: [0, 1, 2, 3], f: (n) => n + 1,
+      porque: "No fim do bloco a máquina lê o primeiro 0. Ela escreve ali um traço e muda para q2. Como não há instrução para (q2, 1), ela para.",
+      erradas: [
+        { l: "q1 0 D q1", tipo: "laco", porque: "Ao encontrar o branco, a máquina continuaria andando para a direita, sem escrever e sem parar." },
+        { l: "q1 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço, mas continua em q1 lendo 1. A linha 1 manda andar de novo, e ela acrescenta traços para a direita indefinidamente. É a mudança de estado que permite parar." },
+        { l: "q1 1 1 q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1: a máquina deixaria de ser determinística." }
+      ]
+    },
+    {
+      id: "soma",
+      titulo: "Soma: f(m, n) = m + n",
+      desc: "A entrada tem m + 1 traços, um 0 e n + 1 traços. Depois de preencher o separador, a fita fica com m + n + 3 traços, dois a mais do que a representação de m + n. Agora a máquina precisa ir até o fim e apagar dois traços.",
+      demo: [1, 2],
+      dado: [["q1 1 D q1", "percorre o 1º bloco"], ["q1 0 1 q2", "preenche o separador"], ["q2 1 D q2", "percorre o 2º bloco"]],
+      correta: ["q2 0 E q3", "achou o fim: volta"],
+      resto: ["q3 1 0 q3", "q3 0 E q4", "q4 1 0 q4", "q4 0 E q5", "q5 1 E q5", "q5 0 D q6"],
+      casos: [[0, 0], [1, 2], [2, 1], [3, 0]], f: (m, n) => m + n,
+      porque: "No fim do segundo bloco a máquina lê 0. Ela volta uma casa, ficando sobre o último traço, e muda para q3, o estado que começa a apagar os dois traços extras.",
+      erradas: [
+        { l: "q2 0 1 q3", tipo: "errado", porque: "A máquina acrescentaria mais um traço em vez de começar a apagar. Com o restante da soma, ela terminaria com m + n + 1, um a mais do que o resultado." },
+        { l: "q2 0 D q2", tipo: "laco", porque: "A máquina continuaria andando para a direita sobre casas em branco, sem nunca parar." },
+        { l: "q2 1 E q3", tipo: "conflito", porque: "Já existe instrução para (q2, 1) na linha 3: não pode haver duas instruções para o mesmo par." }
+      ],
+      depois: "O restante da soma apaga os dois traços extras (estados q3 e q4) e volta ao início (q5). A máquina completa está no Simulador, em Carregar exemplo."
+    }
+  ];
+
+  // Desafios guiados: a máquina inteira, uma linha por vez, e no fim a pergunta "falta alguma linha?".
+  const GUIADOS = [
+    {
+      id: "zero", idSim: "zero", nivel: "Básico", nome: "Função zero: Z(n) = 0", fn: "Z",
+      f: () => 0, casos: [0, 1, 2, 3, 5], demo: [2], exec: [3],
+      enun: "Entrada: n, escrito com n + 1 traços. A máquina deve terminar com um único traço na fita, a representação de 0.",
+      ideia: "Ideia: apagar os traços um a um, da esquerda para a direita, e escrever um traço no fim.",
+      ex: "Z(3): 1111 → 1",
+      parada: "(q3, 1)",
+      passos: [
+        {
+          correta: ["q1 1 0 q2", "apaga o traço"],
+          porque: "Em q1, lendo o primeiro traço, a máquina o apaga e muda para q2.",
+          erradas: [
+            { l: "q1 0 0 q2", tipo: "naoUsada", porque: "No início a máquina lê 1 (o traço mais à esquerda), não 0. Esta instrução não diz o que fazer agora, e a máquina pararia sem dar nenhum passo." },
+            { l: "q1 1 E q2", tipo: "laco", porque: "A máquina andaria para a esquerda, para fora do bloco, sem apagar nada. Os traços que precisam sumir estão à direita." },
+            { l: "q2 1 0 q1", tipo: "naoUsada", porque: "A máquina começa no estado q1, não em q2. Sem instrução para (q1, 1), ela pararia antes do primeiro passo." }
+          ]
+        },
+        {
+          correta: ["q2 0 D q1", "anda e repete"],
+          porque: "Depois de apagar, a casa ficou em branco: a máquina está em q2 lendo 0. Ela anda uma casa para a direita e volta a q1. Assim a linha 1 apaga o próximo traço, e o ciclo se repete.",
+          erradas: [
+            { l: "q2 1 D q1", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1. Esta instrução nunca seria usada, e a máquina pararia em (q2, 0) com um traço a menos." },
+            { l: "q2 0 E q1", tipo: "errado", porque: "A máquina andaria para o lado errado: os traços que ainda precisam ser apagados estão à direita." },
+            { l: "q2 0 1 q1", tipo: "laco", porque: "A máquina reescreveria o traço que acabou de apagar e voltaria a q1 lendo 1. A linha 1 apaga de novo, esta linha reescreve, e ela fica nesse vaivém para sempre." }
+          ]
+        },
+        {
+          correta: ["q1 0 1 q3", "escreve um traço"],
+          porque: "Quando todos os traços foram apagados, a máquina está em q1 lendo o 0 logo depois do bloco. Ela escreve ali um único traço, a representação de 0, e muda para q3.",
+          erradas: [
+            { l: "q1 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço, mas continua em q1. Lendo 1 em q1, a linha 1 o apaga de novo, e ela segue para a direita apagando e escrevendo, sem parar." },
+            { l: "q1 0 D q1", tipo: "laco", porque: "Ao achar o branco, a máquina continuaria andando para a direita, sem escrever e sem parar." },
+            { l: "q1 1 1 q3", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, neste momento a máquina lê 0, não 1." }
+          ]
+        }
+      ],
+      fim: {
+        porque: "Em (q3, 1) não há instrução, então a máquina para. A fita tem um único traço: Z(n) = 0 para todo n.",
+        erradas: [
+          { l: "q3 1 0 q3", tipo: "errado", porque: "A máquina apagaria o único traço. A fita ficaria vazia, o que não representa número algum." },
+          { l: "q3 1 E q1", tipo: "laco", porque: "A máquina andaria para a esquerda, escreveria outro traço (linha 3) e repetiria isso para sempre: nunca pararia." },
+          { l: "q3 1 1 q3", tipo: "laco", porque: "A máquina escreveria 1 sobre o próprio traço e continuaria em q3. A fita não muda, mas sempre há instrução, então ela nunca para." }
+        ]
+      }
+    },
+    {
+      id: "mais2", idSim: "mais2", nivel: "Médio", nome: "f(n) = n + 2", fn: "f",
+      f: (n) => n + 2, casos: [0, 1, 2, 4], demo: [2], exec: [2],
+      enun: "Entrada: n, escrito com n + 1 traços. A máquina deve terminar com n + 3 traços, a representação de n + 2.",
+      ideia: "Ideia: o sucessor acrescenta um traço à esquerda do bloco. Aqui são dois.",
+      ex: "f(2): 111 → 11111",
+      parada: "(q4, 1)",
+      passos: [
+        {
+          correta: ["q1 1 E q2", "anda à esquerda"],
+          porque: "A máquina sai do bloco pela esquerda e fica sobre a casa em branco onde vai escrever o primeiro traço novo.",
+          erradas: [
+            { l: "q1 1 1 q2", tipo: "errado", porque: "Escrever 1 onde já há um traço não muda a fita, e a máquina continua no mesmo lugar, sem abrir espaço para os traços novos." },
+            { l: "q1 0 E q2", tipo: "naoUsada", porque: "No início a máquina lê 1, não 0. Esta instrução não diz o que fazer agora, e a máquina pararia sem dar nenhum passo." },
+            { l: "q1 1 0 q2", tipo: "errado", porque: "A máquina apagaria um traço da entrada. Começaria perdendo um traço, e no fim teria só n + 1." }
+          ]
+        },
+        {
+          correta: ["q2 0 1 q3", "escreve o 1º traço novo"],
+          porque: "Sobre a casa em branco, a máquina escreve o primeiro traço novo e muda para q3.",
+          erradas: [
+            { l: "q2 0 1 q2", tipo: "errado", porque: "A máquina escreve o traço, mas continua em q2. Em (q2, 1) não há o que fazer, então ela pararia com um só traço novo: n + 1." },
+            { l: "q2 1 1 q3", tipo: "naoUsada", porque: "Neste momento a máquina lê 0 (a casa em branco), não 1. A instrução nunca seria usada." },
+            { l: "q2 0 E q3", tipo: "errado", porque: "A máquina andaria mais uma casa sem escrever. Traços só aparecem com a operação 1." }
+          ]
+        },
+        {
+          correta: ["q3 1 E q4", "anda mais uma casa"],
+          porque: "A máquina está sobre o traço que acabou de escrever. Ela anda mais uma casa para a esquerda, até o próximo branco.",
+          erradas: [
+            { l: "q3 1 D q4", tipo: "errado", porque: "A máquina voltaria para cima do bloco original, onde não há espaço para o segundo traço novo. Ela terminaria com n + 1." },
+            { l: "q3 0 E q4", tipo: "naoUsada", porque: "A máquina está sobre o traço que acabou de escrever: lê 1, não 0." },
+            { l: "q2 1 E q4", tipo: "naoUsada", porque: "A máquina está em q3, não em q2. Esta instrução nunca seria usada." }
+          ]
+        },
+        {
+          correta: ["q4 0 1 q4", "escreve o 2º traço novo"],
+          porque: "A máquina escreve o segundo traço novo e continua em q4. Em (q4, 1) não há instrução: ela para com n + 3 traços.",
+          erradas: [
+            { l: "q4 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço e volta a q1 lendo 1. A linha 1 recomeça tudo, e ela acrescenta traços à esquerda para sempre." },
+            { l: "q4 1 1 q4", tipo: "naoUsada", porque: "Nesta casa a máquina lê 0, não 1. A instrução nunca seria usada, e a máquina pararia com n + 1." },
+            { l: "q4 0 D q4", tipo: "errado", porque: "A máquina andaria para a direita sem escrever, de volta ao traço novo, e pararia com n + 1." }
+          ]
+        }
+      ],
+      fim: {
+        porque: "Em (q4, 1) não há instrução: a máquina para com n + 3 traços, ou seja, f(n) = n + 2.",
+        erradas: [
+          { l: "q4 1 E q4", tipo: "laco", porque: "A máquina andaria para a esquerda e, com a linha 4, escreveria outro traço, e mais outro, sem nunca parar." },
+          { l: "q4 1 0 q4", tipo: "laco", porque: "A máquina apagaria o traço recém-escrito. A linha 4 o escreveria de novo, e ela ficaria apagando e escrevendo na mesma casa para sempre." }
+        ]
+      }
+    },
+    {
+      id: "proj", idSim: "proj", nivel: "Desafio", nome: "Projeção: P(m, n) = m", fn: "P",
+      f: (m) => m, casos: [[0, 0], [0, 2], [1, 1], [1, 2], [2, 0], [3, 2]], demo: [1, 2], exec: [1, 2],
+      enun: "Entrada: m + 1 traços, um 0 e n + 1 traços. A máquina deve terminar só com o primeiro bloco, a representação de m.",
+      ideia: "Ideia: atravessar o primeiro bloco sem mexer nele, pular o separador e apagar o segundo bloco.",
+      ex: "P(1, 2): 11 0 111 → 11",
+      parada: "(q2, 0)",
+      passos: [
+        {
+          correta: ["q1 1 D q1", "percorre o 1º bloco"],
+          porque: "Enquanto lê traços do primeiro bloco, a máquina só anda para a direita, sem mudar de estado e sem mexer neles.",
+          erradas: [
+            { l: "q1 1 0 q1", tipo: "errado", porque: "A máquina apagaria o primeiro bloco, que é justamente o que deve ficar na fita." },
+            { l: "q1 1 E q1", tipo: "errado", porque: "A máquina andaria para a esquerda, para longe do segundo bloco, que é o que precisa ser apagado." },
+            { l: "q1 0 D q1", tipo: "naoUsada", porque: "No início a máquina lê 1, não 0. Esta instrução não diz o que fazer agora." }
+          ]
+        },
+        {
+          correta: ["q1 0 D q2", "pula o separador"],
+          porque: "No fim do primeiro bloco a máquina lê o separador (0). Ela anda para a direita e muda para q2: agora está no segundo bloco, e q2 será o estado que apaga.",
+          erradas: [
+            { l: "q1 0 D q1", tipo: "laco", porque: "Continuando em q1, a máquina atravessaria o segundo bloco sem apagá-lo e depois andaria para a direita para sempre." },
+            { l: "q1 0 E q2", tipo: "errado", porque: "A máquina voltaria para dentro do primeiro bloco, onde começaria a apagar a resposta." },
+            { l: "q1 1 D q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, aqui a máquina lê 0." }
+          ]
+        },
+        {
+          correta: ["q2 1 0 q3", "apaga um traço"],
+          porque: "No segundo bloco, em q2 lendo 1, a máquina apaga o traço e muda para q3.",
+          erradas: [
+            { l: "q2 1 D q3", tipo: "errado", porque: "A máquina andaria sem apagar, e o segundo bloco precisa sumir da fita." },
+            { l: "q2 0 0 q3", tipo: "naoUsada", porque: "A máquina está sobre o primeiro traço do segundo bloco: lê 1, não 0. Esse bloco sempre tem pelo menos um traço." },
+            { l: "q1 1 0 q3", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1, e a máquina está em q2, não em q1." }
+          ]
+        },
+        {
+          correta: ["q3 0 D q2", "anda e repete"],
+          porque: "A casa agora está em branco (q3 lendo 0). A máquina anda para a direita e volta a q2, para apagar o próximo traço. Esse laço termina quando o bloco acaba.",
+          erradas: [
+            { l: "q3 0 D q3", tipo: "laco", porque: "A máquina andaria, mas ficaria em q3, que não sabe apagar. Se houver outro traço, ela para sobre ele sem apagá-lo; se não houver, anda para a direita para sempre." },
+            { l: "q3 0 E q2", tipo: "errado", porque: "A máquina voltaria para o separador. Em (q2, 0) ela pararia sem terminar de apagar o segundo bloco, sempre que ele tiver mais de um traço." },
+            { l: "q3 1 D q2", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1. A instrução nunca seria usada." }
+          ]
+        }
+      ],
+      fim: {
+        porque: "Quando o segundo bloco acaba, a máquina está em (q2, 0), onde não há instrução: ela para. Sobra só o primeiro bloco, ou seja, P(m, n) = m.",
+        erradas: [
+          { l: "q2 0 D q2", tipo: "laco", porque: "A máquina andaria para a direita sobre casas em branco para sempre." },
+          { l: "q2 0 E q2", tipo: "laco", porque: "A máquina voltaria para a esquerda, começaria a apagar o primeiro bloco (a resposta) e nunca pararia." }
+        ]
+      }
+    }
+  ];
+  /*DADOS-FIM*/
+
+  // ---------- motor ----------
+  function regrasDe(linhas) {
+    const m = new Map();
+    for (const l of linhas) {
+      const [q, s, op, q2] = l.trim().split(/\s+/);
+      const k = q + "|" + s;
+      if (!m.has(k)) m.set(k, { q, s, op, q2, txt: l });
+    }
+    return m;
+  }
+  function fitaDe(args) {
+    const m = new Map();
+    const s = args.map((x) => "1".repeat(x + 1)).join("0");
+    for (let i = 0; i < s.length; i++) if (s[i] === "1") m.set(i, "1");
+    return m;
+  }
+  function rastro(linhas, args, lim) {
+    const R = regrasDe(linhas);
+    const f = fitaDe(args);
+    let pos = 0, q = "q1";
+    const conf = [{ f: new Map(f), pos, q }];
+    let parou = false;
+    while (conf.length <= (lim || 1000)) {
+      const r = R.get(q + "|" + (f.get(pos) || "0"));
+      if (!r) { parou = true; break; }
+      if (r.op === "1") f.set(pos, "1"); else if (r.op === "0") f.delete(pos); else pos += r.op === "D" ? 1 : -1;
+      q = r.q2;
+      conf.push({ f: new Map(f), pos, q, r });
+    }
+    return { conf, parou };
+  }
+  function fitaTxt(f) {
+    const ks = [...f.keys()];
+    if (!ks.length) return "";
+    const a = Math.min(...ks), b = Math.max(...ks);
+    let t = "";
+    for (let i = a; i <= b; i++) t += f.get(i) || "0";
+    return t;
+  }
+  function valorDe(f) { const t = fitaTxt(f); return /^1+$/.test(t) ? t.length - 1 : null; }
+  function entradaTxt(args) {
+    const nm = args.length === 1 ? ["n"] : ["m", "n"];
+    return args.map((x, i) => `${nm[i]} = ${x}`).join(", ") + " (" + args.map((x) => "1".repeat(x + 1)).join(" 0 ") + ")";
+  }
+
+  function desenharFita(box, f, pos, q, parou) {
+    const tape = box.querySelector(".tape");
+    const cellW = parseFloat(getComputedStyle(box).getPropertyValue("--cell")) || 40;
+    const w = box.clientWidth || 300;
+    const cabe = Math.max(7, Math.floor((w - 60) / (cellW - 2)));
+    let a = pos, b = pos;
+    for (const k of f.keys()) { if (k < a) a = k; if (k > b) b = k; }
+    a -= 1; b += 1;
+    while (b - a + 1 < cabe) { a--; if (b - a + 1 < cabe) b++; }
+    let h = '<div class="ends">...</div>';
+    for (let i = a; i <= b; i++) {
+      const s = f.get(i) || "0";
+      const cl = "cell" + (s === "0" ? " zero" : "") + (i === pos ? " head" : "") + (i === pos && parou ? " halted" : "");
+      h += `<div class="${cl}">${s}${i === pos ? `<div class="mk"><span class="st">${esc(q)}</span><span class="tri"></span></div>` : ""}</div>`;
+    }
+    h += '<div class="ends">...</div>';
+    tape.innerHTML = h;
+    const head = tape.querySelector(".cell.head");
+    if (head) box.scrollLeft = head.offsetLeft - box.clientWidth / 2 + head.offsetWidth / 2;
+    box.setAttribute("aria-label", `Fita: ${fitaTxt(f) || "vazia"}; cabeçote no estado ${q}${parou ? ", parada" : ""}`);
+  }
+
+  // ---------- estado salvo ----------
+  const KEY = "turing-de-bolso-guiado-v1";
+  function novoEstado() { return { aba: "aq", aq: { resp: [], i: 0 }, des: {}, atual: null, liberado: false }; }
+  let S = novoEstado();
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (s && typeof s === "object") {
+      S = Object.assign(novoEstado(), s);
+      if (!S.aq || !Array.isArray(S.aq.resp)) S.aq = { resp: [], i: 0 };
+      if (!S.des || typeof S.des !== "object") S.des = {};
+    }
+  } catch (e) { /* sem armazenamento: segue sem salvar */ }
+  function salvar() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignorado */ } }
+  function estDes(id) {
+    let e = S.des[id];
+    if (!e || !Array.isArray(e.resp)) { e = S.des[id] = { resp: [], passo: 0 }; }
+    return e;
+  }
+  const totalPassos = (g) => g.passos.length + 1;
+  const concluido = (g) => { const e = S.des[g.id]; return !!e && Array.isArray(e.resp) && e.resp.length >= totalPassos(g); };
+  const acertos = (resp) => resp.filter((r) => r === 0).length;
+
+  // ---------- alternativas ----------
+  const ordens = new Map();
+  function ordemDe(chave, n) {
+    if (!ordens.has(chave)) {
+      const o = Array.from({ length: n }, (_, i) => i);
+      for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o[i], o[j]] = [o[j], o[i]]; }
+      ordens.set(chave, o);
+    }
+    return ordens.get(chave);
+  }
+  function opcoesDe(item, final) {
+    if (final) return [{ ok: true, txt: "Nenhuma: a máquina já está completa", porque: item.porque }].concat(item.erradas.map((e) => ({ l: e.l, porque: e.porque })));
+    return [{ ok: true, l: item.correta[0], porque: item.porque }].concat(item.erradas.map((e) => ({ l: e.l, porque: e.porque })));
+  }
+  function opcoesHTML(item, chave, resp, final) {
+    const ops = opcoesDe(item, final);
+    const ordem = ordemDe(chave, ops.length);
+    const letras = "ABCD";
+    const feito = resp != null;
+    let h = `<div class="opcoes" role="group" aria-label="Alternativas">`;
+    ordem.forEach((idx, j) => {
+      const o = ops[idx];
+      let cls = "opcao" + (final ? " prosa" : "");
+      let marca = letras[j];
+      if (feito) {
+        if (idx === 0) { cls += " certa"; marca = "✓"; }
+        else if (idx === resp) { cls += " errada"; marca = "✗"; }
+        else cls += " apagada";
+      }
+      const conteudo = final ? (o.ok ? esc(o.txt) : `Acrescentar <code>${esc(o.l)}</code>`) : esc(o.l);
+      const rotulo = final ? (o.ok ? o.txt : "Acrescentar a linha " + o.l) : o.l;
+      h += `<button type="button" class="${cls}" data-opcao="${idx}"${feito ? " disabled" : ""} aria-label="Alternativa ${letras[j]}: ${esc(rotulo)}${feito ? (idx === 0 ? " (correta)" : idx === resp ? " (sua escolha, errada)" : "") : ""}"><span class="let" aria-hidden="true">${marca}</span><span class="txt">${conteudo}</span></button>`;
+    });
+    return h + "</div>";
+  }
+  const ELOGIOS = ["Isso!", "Certo!", "Exato!", "Muito bem!", "Acertou!"];
+  function feedbackHTML(item, resp, n, final) {
+    if (resp == null) return `<div class="feedback" aria-live="polite"></div>`;
+    const ops = opcoesDe(item, final);
+    const certa = ops[0];
+    if (resp === 0) return `<div class="feedback ok" aria-live="polite"><strong class="t">${ELOGIOS[n % ELOGIOS.length]}</strong><p>${certa.porque}</p></div>`;
+    const esc0 = ops[resp];
+    const rotEsc = final ? `Acrescentar <code>${esc(esc0.l)}</code>` : `<code>${esc(esc0.l)}</code>`;
+    const rotCerta = final ? "não falta nenhuma linha" : `a correta é <code>${esc(certa.l)}</code>`;
+    return `<div class="feedback bad" aria-live="polite"><strong class="t">Não é essa.</strong><p>${rotEsc}: ${esc0.porque}</p><p class="correta"><strong>Resposta: ${rotCerta}.</strong> ${certa.porque}</p></div>`;
+  }
+
+  // ---------- código e fita "onde a máquina para" ----------
+  function codigoHTML(linhas, op) {
+    op = op || {};
+    let h = `<div class="codigo" role="group" aria-label="Código da máquina">`;
+    linhas.forEach(([t, c], k) => {
+      h += `<div class="ln${op.nova === k ? " nova" : ""}"><span class="n">${k + 1}</span><span><span class="q">${esc(t)}</span>${c ? `<span class="cm"># ${esc(c)}</span>` : ""}</span></div>`;
+    });
+    if (op.vazia) h += `<div class="ln vazia"><span class="n">${linhas.length + 1}</span><span><span class="q" aria-label="linha a escolher">${op.vaziaTxt || "?"}</span></span></div>`;
+    if (op.fim) h += `<div class="ln fim"><span class="n"></span><span><span class="q"># ${esc(op.fim)}</span></span></div>`;
+    return h + "</div>";
+  }
+  const fitasOnde = new Map();
+  function ondeHTML(prefixo, demo, chave, oculto, final) {
+    const tr = rastro(prefixo, demo, 500);
+    const c = tr.conf[tr.conf.length - 1];
+    const s = c.f.get(c.pos) || "0";
+    const id = "onde-" + chave;
+    fitasOnde.set(id, { f: c.f, pos: c.pos, q: c.q });
+    const ent = entradaTxt(demo);
+    const passos = tr.conf.length - 1;
+    let cap;
+    if (!prefixo.length) cap = `Entrada ${ent}. A máquina começa em q1, sobre o traço mais à esquerda. Ainda não há instrução para (q1, 1): a linha 1 diz o que fazer.`;
+    else if (final) cap = `Entrada ${ent}. Com essas ${prefixo.length} linhas, a máquina para no passo ${passos}, porque não há instrução para (${c.q}, ${s}). Fita final: ${fitaTxt(c.f) || "vazia"}.`;
+    else cap = `Entrada ${ent}. Com as linhas acima, a máquina para no passo ${passos}: não há instrução para (${c.q}, ${s}). A próxima linha diz o que fazer nessa situação.`;
+    return `<div class="onde mini" id="${id}-w"${oculto ? " hidden" : ""}><div class="tape-box estatica" id="${id}"><div class="tape"></div></div><p class="cap">${cap}</p></div>`;
+  }
+  function desenharOnde(raiz) {
+    raiz.querySelectorAll(".onde:not([hidden]) .tape-box").forEach((box) => {
+      const d = fitasOnde.get(box.id);
+      if (d) desenharFita(box, d.f, d.pos, d.q, true);
+    });
+  }
+  function progressoHTML(total, resp, atual) {
+    let h = `<div class="prog" aria-hidden="true">`;
+    for (let k = 0; k < total; k++) {
+      const r = resp[k];
+      h += `<i class="${r == null ? (k === atual ? "atual" : "") : r === 0 ? "feito" : "erro"}"></i>`;
+    }
+    return h + "</div>";
+  }
+  function mostrarFim(el) {
+    if (!el) return;
+    requestAnimationFrame(() => el.scrollIntoView({ block: "nearest", behavior: reduz ? "auto" : "smooth" }));
+  }
+
+  // ---------- aquecimento ----------
+  function renderAq() {
+    const card = $("aqCard");
+    const n = AQUEC.length;
+    const i = Math.min(S.aq.i || 0, n);
+    if (i >= n) { renderAqFim(); return; }
+    const q = AQUEC[i];
+    const resp = S.aq.resp[i];
+    const feito = resp != null;
+    let h = `<div class="card-head"><span class="eyebrow">Aquecimento · questão ${i + 1} de ${n}</span>${progressoHTML(n, S.aq.resp, i)}</div>`;
+    h += `<h2>${esc(q.titulo)}</h2><p class="lead">${esc(q.desc)}</p>`;
+    h += codigoHTML(feito ? q.dado.concat([q.correta]) : q.dado, feito ? { nova: q.dado.length } : { vazia: true });
+    if (!feito) h += ondeHTML(q.dado.map((x) => x[0]), q.demo, "aq" + i, false, false);
+    h += `<p class="pergunta">${feito ? "Qual era a próxima linha?" : "Qual é a próxima linha?"}</p>`;
+    h += opcoesHTML(q, "aq" + i, resp, false);
+    h += feedbackHTML(q, resp, i, false);
+    if (feito && q.depois) h += `<p class="lead">${esc(q.depois)}</p>`;
+    if (feito) h += `<div class="row acoes"><button type="button" class="primary" data-acao="aq-prox">${i + 1 < n ? "Próxima questão" : "Ver resultado"}</button></div>`;
+    card.innerHTML = h;
+    desenharOnde(card);
+  }
+  function renderAqFim() {
+    const card = $("aqCard");
+    const ok = acertos(S.aq.resp);
+    let h = `<span class="eyebrow">Aquecimento concluído</span><h2><span class="placar">${ok} de ${AQUEC.length}</span> respostas certas</h2>`;
+    h += `<ul class="lista-ok">` + AQUEC.map((q, k) => `<li><span class="s ${S.aq.resp[k] === 0 ? "v" : "x"}" aria-label="${S.aq.resp[k] === 0 ? "acertou" : "errou"}">${S.aq.resp[k] === 0 ? "✓" : "✗"}</span><span>${esc(q.titulo)}: <span class="mono-i">${esc(q.correta[0])}</span></span></li>`).join("") + `</ul>`;
+    h += `<p>Os três desafios estão liberados. Em cada um você monta uma máquina inteira, escolhendo uma linha de cada vez, e no fim vê a máquina funcionando.</p>`;
+    h += `<div class="row acoes"><button type="button" class="primary" data-acao="ir-des">Ir para os desafios</button><button type="button" data-acao="aq-refazer">Refazer o aquecimento</button></div>`;
+    card.innerHTML = h;
+  }
+  $("aqCard").addEventListener("click", (e) => {
+    const op = e.target.closest("[data-opcao]");
+    if (op && !op.disabled) {
+      const i = S.aq.i || 0;
+      if (S.aq.resp[i] != null) return;
+      S.aq.resp[i] = parseInt(op.dataset.opcao, 10);
+      if (AQUEC.every((_, k) => S.aq.resp[k] != null)) S.liberado = true;
+      salvar(); renderAq(); atualizarSubs();
+      mostrarFim($("aqCard").querySelector(".row.acoes"));
+      return;
+    }
+    const b = e.target.closest("[data-acao]");
+    if (!b) return;
+    const a = b.dataset.acao;
+    if (a === "aq-prox") { S.aq.i = (S.aq.i || 0) + 1; salvar(); renderAq(); topoDoPainel("painel-aq"); }
+    else if (a === "aq-refazer") { S.aq = { resp: [], i: 0 }; for (const k of [...ordens.keys()]) if (k.startsWith("aq")) ordens.delete(k); salvar(); renderAq(); atualizarSubs(); topoDoPainel("painel-aq"); }
+    else if (a === "ir-des") { S.atual = null; salvar(); mostrarAba("des"); }
+  });
+
+  // ---------- desafios guiados ----------
+  let anim = null;
+  function pararAnimacoes() { if (anim && anim.timer) clearInterval(anim.timer); if (anim) anim.timer = null; anim = null; }
+
+  function renderDes() {
+    pararAnimacoes();
+    const raiz = $("desGuia");
+    if (!S.liberado) {
+      raiz.innerHTML = `<div class="card aviso"><span class="eyebrow">Desafios</span><h2>Primeiro, o aquecimento</h2><p>Responda às ${AQUEC.length} questões do aquecimento para liberar os desafios. São rápidas: em cada uma você escolhe a próxima linha de uma máquina.</p><button type="button" class="primary" data-acao="ir-aq">Ir para o aquecimento</button></div>`;
+      return;
+    }
+    const g = GUIADOS.find((x) => x.id === S.atual);
+    if (g) renderMaquina(g); else renderLista();
+  }
+
+  function renderLista() {
+    const raiz = $("desGuia");
+    let h = `<div class="card"><span class="eyebrow">Desafios guiados</span><h2>Monte três máquinas, linha a linha</h2><p class="lead">Em cada passo, escolha a próxima linha do código entre as alternativas. Depois de cada escolha aparece a linha correta, e no fim você vê a máquina completa funcionando.</p></div><div class="niveis">`;
+    GUIADOS.forEach((g) => {
+      const e = S.des[g.id];
+      const tot = totalPassos(g);
+      let st, ir;
+      if (concluido(g)) { st = `Concluído · ${acertos(e.resp)} de ${tot} certas de primeira`; ir = "Rever"; }
+      else if (e && e.resp && e.resp.length) { st = `Em andamento · passo ${Math.min(e.passo + 1, tot)} de ${tot}`; ir = "Continuar"; }
+      else { st = `${g.passos.length} linhas para escolher`; ir = "Começar"; }
+      h += `<button type="button" class="nivel${concluido(g) ? " feito" : ""}" data-abrir="${g.id}"><span class="tag">${esc(g.nivel)}</span><b>${esc(g.nome)}</b><span class="st">${esc(st)}</span><span class="ir">${ir} ›</span></button>`;
+    });
+    h += `</div>`;
+    raiz.innerHTML = h;
+  }
+
+  function renderMaquina(g) {
+    const raiz = $("desGuia");
+    const e = estDes(g.id);
+    const tot = totalPassos(g);
+    const p = Math.min(e.passo || 0, tot);
+    if (p >= tot) { renderMaquinaFim(g); return; }
+    const final = p === g.passos.length;
+    const item = final ? g.fim : g.passos[p];
+    const resp = e.resp[p];
+    const feito = resp != null;
+    const anteriores = g.passos.slice(0, p).map((x) => x.correta);
+    let cod;
+    if (!final) cod = codigoHTML(feito ? anteriores.concat([item.correta]) : anteriores, feito ? { nova: p } : { vazia: true });
+    else cod = codigoHTML(anteriores, feito ? { fim: `sem instrução para ${g.parada}: a máquina para` } : { vazia: true, vaziaTxt: "falta alguma?" });
+
+    let h = `<div class="card">`;
+    h += `<div class="card-head"><span class="eyebrow">${esc(g.nivel)} · passo ${p + 1} de ${tot}</span>${progressoHTML(tot, e.resp, p)}</div>`;
+    h += `<h2>${esc(g.nome)}</h2>`;
+    h += `<div class="enun"><span>${esc(g.enun)}</span><span>${esc(g.ideia)}</span><span class="ex">${esc(g.ex)}</span></div>`;
+    h += cod;
+    if (!feito) {
+      const chave = g.id + p;
+      h += `<button type="button" class="link" data-acao="dica" data-alvo="onde-${chave}-w" aria-expanded="false">Dica: onde a máquina para com essas linhas?</button>`;
+      h += ondeHTML(anteriores.map((x) => x[0]), g.demo, chave, true, final);
+    }
+    h += `<p class="pergunta">${final ? "Falta alguma linha?" : `Qual é a linha ${p + 1}?`}</p>`;
+    h += opcoesHTML(item, g.id + p, resp, final);
+    h += feedbackHTML(item, resp, p + 1, final);
+    if (feito) h += `<div class="row acoes"><button type="button" class="primary" data-acao="des-prox">${final ? "Ver a máquina funcionando" : "Próxima linha"}</button></div>`;
+    h += `<button type="button" class="link" data-acao="des-lista">‹ Voltar aos desafios</button>`;
+    h += `</div>`;
+    raiz.innerHTML = h;
+  }
+
+  function renderMaquinaFim(g) {
+    const raiz = $("desGuia");
+    const e = estDes(g.id);
+    const tot = totalPassos(g);
+    const ok = acertos(e.resp);
+    const idx = GUIADOS.indexOf(g);
+    const prox = GUIADOS.slice(idx + 1).concat(GUIADOS.slice(0, idx)).find((x) => !concluido(x));
+    let h = `<div class="card">`;
+    h += `<div class="card-head"><span class="eyebrow">${esc(g.nivel)} · concluído</span>${progressoHTML(tot, e.resp, -1)}</div>`;
+    h += `<h2>${esc(g.nome)}</h2>`;
+    h += `<p><span class="placar">${ok} de ${tot}</span> escolhas certas de primeira</p>`;
+    h += `<h3>Resposta correta</h3>`;
+    h += codigoHTML(g.passos.map((x) => x.correta), { fim: `sem instrução para ${g.parada}: a máquina para` });
+    h += `<p>${g.fim.porque}</p>`;
+    h += `</div>`;
+    h += `<div class="card"><h3>A máquina funcionando</h3><p class="lead">Escolha uma entrada. A máquina roda sozinha; use Passo e Voltar para ver cada instrução.</p><div class="mini" id="miniMaq"></div></div>`;
+    h += `<div class="row acoes">`;
+    if (prox) h += `<button type="button" class="primary" data-acao="des-ir" data-id="${prox.id}">Próximo: ${esc(prox.nivel)}</button>`;
+    else h += `<button type="button" class="primary" data-acao="des-lista">Ver os três desafios</button>`;
+    h += `<button type="button" data-acao="des-sim">Abrir no simulador</button><button type="button" data-acao="des-refazer">Refazer este desafio</button></div>`;
+    h += `<button type="button" class="link" data-acao="des-lista">‹ Voltar aos desafios</button>`;
+    raiz.innerHTML = h;
+    montarMini($("miniMaq"), g);
+  }
+
+  const ICONES = {
+    reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    step: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
+    end: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18l6-6-6-6"/><path d="M13 18l6-6-6-6"/></svg>'
+  };
+
+  function montarMini(el, g) {
+    pararAnimacoes();
+    const linhas = g.passos.map((x) => x.correta[0]);
+    const st = { args: g.exec.slice(), tr: null, i: 0, timer: null };
+    anim = st;
+    const igual = (a, b) => a.length === b.length && a.every((x, k) => x === b[k]);
+    const rot = (a) => `${g.fn}(${a.join(", ")})`;
+    el.innerHTML = `
+      <div class="chips" role="group" aria-label="Entrada">${g.casos.map((c, j) => { const a = [].concat(c); return `<button type="button" data-c="${j}" aria-pressed="${igual(a, st.args)}">${rot(a)}</button>`; }).join("")}</div>
+      <div class="meter">
+        <div><span class="lbl">Passo</span><span class="big" data-r="passo">0</span></div>
+        <div><span class="lbl">Estado</span><span class="badge-q" data-r="estado">q1</span></div>
+        <div style="min-width:0"><span class="lbl" data-r="instrLbl">Próxima instrução</span><span class="instr" data-r="instr">-</span></div>
+      </div>
+      <div class="tape-box" data-r="box" role="img"><div class="tape"></div></div>
+      <div class="controls">
+        <button type="button" data-m="reset" aria-label="Voltar ao início">${ICONES.reset}<span>Início</span></button>
+        <button type="button" data-m="back" aria-label="Passo anterior">${ICONES.back}<span>Voltar</span></button>
+        <button type="button" data-m="step" aria-label="Próximo passo">${ICONES.step}<span>Passo</span></button>
+        <button type="button" data-m="run" class="primary" aria-label="Rodar ou pausar"><span data-r="runIc">${ICONES.play}</span><span data-r="runLbl">Rodar</span></button>
+        <button type="button" data-m="end" aria-label="Executar até parar">${ICONES.end}<span>Até o fim</span></button>
+      </div>
+      <div class="result" data-r="res" aria-live="polite"></div>
+      <div class="tests" data-r="tests"></div>`;
+    const R = (k) => el.querySelector(`[data-r="${k}"]`);
+    const regras = regrasDe(linhas);
+    const linhaDe = (r) => linhas.indexOf(r.txt) + 1;
+
+    function preparar() { st.tr = rastro(linhas, st.args, 3000); st.i = 0; }
+    function ultimo() { return st.i >= st.tr.conf.length - 1; }
+    function desenhar() {
+      const c = st.tr.conf[st.i];
+      const fim = ultimo() && st.tr.parou;
+      R("passo").textContent = st.i;
+      R("estado").textContent = c.q;
+      const prox = regras.get(c.q + "|" + (c.f.get(c.pos) || "0"));
+      R("instrLbl").textContent = fim ? "Nenhuma instrução para" : "Próxima instrução";
+      R("instr").textContent = fim ? `(${c.q}, ${c.f.get(c.pos) || "0"})` : (prox ? `${prox.txt}   (linha ${linhaDe(prox)})` : "-");
+      desenharFita(R("box"), c.f, c.pos, c.q, fim);
+      const res = R("res");
+      if (fim) {
+        const v = valorDe(c.f);
+        res.className = "result halt";
+        res.innerHTML = `<strong>Parou no passo ${st.i}: não há instrução para (${esc(c.q)}, ${c.f.get(c.pos) || "0"}).</strong><span>Fita final: <span class="mono">${fitaTxt(c.f) || "vazia"}</span></span><span class="val">${rot(st.args)} = ${v === null ? "?" : v}</span>`;
+      } else {
+        res.className = "result";
+        res.innerHTML = st.i === 0
+          ? `<strong>Entrada ${esc(entradaTxt(st.args))}.</strong><span>A máquina começa em q1, sobre o traço mais à esquerda.</span>`
+          : `<strong>Executando.</strong><span>Fita atual: <span class="mono">${fitaTxt(c.f) || "vazia"}</span></span>`;
+      }
+      R("runLbl").textContent = st.timer ? "Pausar" : "Rodar";
+      R("runIc").innerHTML = st.timer ? ICONES.pause : ICONES.play;
+    }
+    function pausar() { if (st.timer) { clearInterval(st.timer); st.timer = null; } }
+    function rodar() {
+      if (ultimo()) st.i = 0;
+      pausar();
+      st.timer = setInterval(() => {
+        if (anim !== st || !el.isConnected) { pausar(); return; }
+        if (ultimo()) { pausar(); desenhar(); return; }
+        st.i++; desenhar();
+        if (ultimo()) { pausar(); desenhar(); }
+      }, 420);
+      desenhar();
+    }
+    function testes() {
+      const out = g.casos.map((c) => {
+        const a = [].concat(c);
+        const tr = rastro(linhas, a, 3000);
+        const fimC = tr.conf[tr.conf.length - 1];
+        const v = tr.parou ? valorDe(fimC.f) : null;
+        const ok = v === g.f(...a);
+        return `<span class="${ok ? "pass" : "fail"}">${ok ? "✔" : "✘"} ${rot(a)} = ${v === null ? "?" : v}  (${tr.conf.length - 1} passos)</span>`;
+      });
+      R("tests").innerHTML = `<span class="sum">Testes com todas as entradas:</span>` + out.join("");
+    }
+    el.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-c]");
+      if (chip) {
+        st.args = [].concat(g.casos[parseInt(chip.dataset.c, 10)]);
+        el.querySelectorAll("[data-c]").forEach((b) => b.setAttribute("aria-pressed", b === chip ? "true" : "false"));
+        pausar(); preparar(); desenhar();
+        if (!reduz) rodar();
+        return;
+      }
+      const b = ev.target.closest("[data-m]");
+      if (!b) return;
+      const m = b.dataset.m;
+      if (m === "reset") { pausar(); st.i = 0; }
+      else if (m === "back") { pausar(); st.i = Math.max(0, st.i - 1); }
+      else if (m === "step") { pausar(); if (!ultimo()) st.i++; }
+      else if (m === "run") { if (st.timer) pausar(); else rodar(); }
+      else if (m === "end") { pausar(); st.i = st.tr.conf.length - 1; }
+      desenhar();
+    });
+    preparar();
+    testes();
+    requestAnimationFrame(() => {
+      desenhar();
+      if (!reduz) setTimeout(() => { if (anim === st && st.i === 0 && !st.timer) rodar(); }, 700);
+    });
+    st.redesenhar = desenhar;
+  }
+
+  $("desGuia").addEventListener("click", (e) => {
+    const abrir = e.target.closest("[data-abrir]");
+    if (abrir) { S.atual = abrir.dataset.abrir; salvar(); renderDes(); topoDoPainel("painel-des"); return; }
+    const g = GUIADOS.find((x) => x.id === S.atual);
+    const op = e.target.closest("[data-opcao]");
+    if (op && !op.disabled && g) {
+      const est = estDes(g.id);
+      const p = est.passo || 0;
+      if (est.resp[p] != null) return;
+      est.resp[p] = parseInt(op.dataset.opcao, 10);
+      salvar(); renderDes(); atualizarSubs();
+      mostrarFim($("desGuia").querySelector(".row.acoes"));
+      return;
+    }
+    const b = e.target.closest("[data-acao]");
+    if (!b) return;
+    const a = b.dataset.acao;
+    if (a === "ir-aq") { mostrarAba("aq"); }
+    else if (a === "dica") {
+      const w = $(b.dataset.alvo);
+      if (!w) return;
+      const abrirDica = w.hidden;
+      w.hidden = !abrirDica;
+      b.setAttribute("aria-expanded", abrirDica ? "true" : "false");
+      b.textContent = abrirDica ? "Esconder a dica" : "Dica: onde a máquina para com essas linhas?";
+      if (abrirDica) desenharOnde($("desGuia"));
+    }
+    else if (a === "des-prox" && g) { const est = estDes(g.id); est.passo = (est.passo || 0) + 1; salvar(); renderDes(); topoDoPainel("painel-des"); }
+    else if (a === "des-lista") { S.atual = null; salvar(); renderDes(); topoDoPainel("painel-des"); }
+    else if (a === "des-ir") { S.atual = b.dataset.id; salvar(); renderDes(); topoDoPainel("painel-des"); }
+    else if (a === "des-refazer" && g) {
+      S.des[g.id] = { resp: [], passo: 0 };
+      for (const k of [...ordens.keys()]) if (k.startsWith(g.id)) ordens.delete(k);
+      salvar(); renderDes(); atualizarSubs(); topoDoPainel("painel-des");
+    }
+    else if (a === "des-sim" && g && window.TuringBolso) {
+      const larg = Math.max(...g.passos.map((x) => x.correta[0].length));
+      const prog = `# ${g.nome} (desafio guiado)\n` + g.passos.map((x) => x.correta[0].padEnd(larg + 3) + "# " + x.correta[1]).join("\n") + `\n# sem instrução para ${g.parada}: a máquina para\n`;
+      window.TuringBolso.abrir(prog, g.exec.join(", "), g.idSim);
+      mostrarAba("sim");
+    }
+  });
+
+  // ---------- abas ----------
+  const ABAS = { aq: ["tab-aq", "painel-aq", "aquecimento"], des: ["tab-des", "painel-des", "desafios"], sim: ["tab-sim", "painel-sim", "simulador"] };
+  const CADEADO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+  function atualizarSubs() {
+    const nAq = AQUEC.filter((_, k) => S.aq.resp[k] != null).length;
+    $("subAq").textContent = nAq >= AQUEC.length ? `${acertos(S.aq.resp)} de ${AQUEC.length} certas` : nAq ? `${nAq} de ${AQUEC.length}` : `${AQUEC.length} questões`;
+    const nDes = GUIADOS.filter(concluido).length;
+    $("subDes").innerHTML = S.liberado ? `${nDes} de ${GUIADOS.length} feitos` : `${CADEADO}bloqueados`;
+  }
+  function topoDoPainel(id) {
+    const painel = $(id);
+    const tabs = document.querySelector(".tabs");
+    const y = painel.getBoundingClientRect().top + window.scrollY - tabs.offsetHeight - 16;
+    if (window.scrollY > y) window.scrollTo({ top: Math.max(0, y), behavior: "auto" });
+  }
+  function mostrarAba(a, foco) {
+    if (!ABAS[a]) a = "aq";
+    pararAnimacoes();
+    if (a !== "sim" && window.TuringBolso) window.TuringBolso.pausar();
+    S.aba = a; salvar();
+    for (const [k, [t, p]] of Object.entries(ABAS)) {
+      const sel = k === a;
+      $(t).setAttribute("aria-selected", sel ? "true" : "false");
+      $(t).tabIndex = sel ? 0 : -1;
+      $(p).hidden = !sel;
+    }
+    if (a === "aq") renderAq(); else if (a === "des") renderDes(); else if (window.TuringBolso) window.TuringBolso.redesenhar();
+    try { const h = "#" + ABAS[a][2]; if (location.hash !== h) history.replaceState(null, "", h); } catch (e) { /* ignorado */ }
+    if (foco) $(ABAS[a][0]).focus();
+    atualizarSubs();
+    topoDoPainel(ABAS[a][1]);
+  }
+  const ordemAbas = ["aq", "des", "sim"];
+  document.querySelector(".tabs").addEventListener("click", (e) => {
+    const t = e.target.closest('[role="tab"]');
+    if (!t) return;
+    const a = ordemAbas.find((k) => ABAS[k][0] === t.id);
+    mostrarAba(a);
+  });
+  document.querySelector(".tabs").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const atual = ordemAbas.indexOf(S.aba);
+    let j = e.key === "Home" ? 0 : e.key === "End" ? 2 : (atual + (e.key === "ArrowRight" ? 1 : 2)) % 3;
+    mostrarAba(ordemAbas[j], true);
+  });
+  function abaDoHash() {
+    const h = (location.hash || "").replace("#", "");
+    return ordemAbas.find((k) => ABAS[k][2] === h);
+  }
+  window.addEventListener("hashchange", () => { const a = abaDoHash(); if (a && a !== S.aba) mostrarAba(a); });
+  let rz = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(rz);
+    rz = setTimeout(() => {
+      desenharOnde(document);
+      if (anim && anim.redesenhar) anim.redesenhar();
+    }, 120);
+  });
+
+  // ---------- início ----------
+  if (AQUEC.every((_, k) => S.aq.resp[k] != null)) S.liberado = true;
+  mostrarAba(abaDoHash() || S.aba || "aq");
+  window.scrollTo(0, 0);
+})();
+</script>
+</body>
+</html>
