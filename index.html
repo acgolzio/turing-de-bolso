@@ -253,6 +253,7 @@ textarea#programa::placeholder { color: var(--code-muted); opacity: 1; }
 .tests .sum { font-family: var(--font-body); font-weight: 600; margin-top: 4px; }
 
 footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-width: 80ch; }
+.ref { font-size: 0.85rem; color: var(--muted); max-width: 80ch; }
 @media (max-width: 420px) {
   :root { --cell: 40px; }
   .mini { --cell: 36px; }
@@ -267,9 +268,9 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
 <body>
 <div class="wrap">
   <header class="top">
-    <span class="eyebrow">Minicurso · Como pensa um computador?</span>
+    <span class="eyebrow">Como pensa um computador?</span>
     <h1>Turing de Bolso</h1>
-    <p class="lead">Comece pelo aquecimento, monte três máquinas escolhendo as linhas do código e depois escreva as suas no simulador. Tudo em quádruplas, como em Carnielli e Epstein.</p>
+    <p class="lead">Comece pelo aquecimento, monte três máquinas escolhendo as linhas do código e depois escreva as suas no simulador. Tudo na notação de quádruplas.</p>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Partes do Turing de Bolso">
@@ -375,11 +376,10 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
       </section>
     </div>
   </main>
+  <p class="ref">Referência: CARNIELLI, W. A.; EPSTEIN, R. L. <i>Computabilidade, funções computáveis, lógica e os fundamentos da matemática</i>. 2. ed. rev. São Paulo: Editora UNESP, 2009.</p>
   </div>
 
   <footer>
-    <p>Notação: CARNIELLI, W. A.; EPSTEIN, R. L. Computabilidade, funções computáveis, lógica e os fundamentos da matemática. 2. ed. rev. São Paulo: Editora UNESP, 2009, cap. 9.</p>
-    <p>Modelo original: TURING, A. M. On computable numbers, with an application to the Entscheidungsproblem. Proceedings of the London Mathematical Society, s. 2, v. 42, n. 1, p. 230-265, 1937.</p>
     <p>Respostas e programas ficam salvos apenas neste navegador.</p>
   </footer>
 </div>
