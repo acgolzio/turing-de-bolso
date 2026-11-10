@@ -114,8 +114,8 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
 .row > button.primary { flex: 0 0 auto; }
 
 /* ===== guiado: código, alternativas, retorno ===== */
-.prog { display: flex; gap: 5px; align-items: center; }
-.prog i { width: 22px; height: 6px; border-radius: 3px; background: var(--line); }
+.prog { display: flex; gap: 5px; align-items: center; flex: 0 1 auto; min-width: 0; }
+.prog i { flex: 0 1 22px; min-width: 9px; height: 6px; border-radius: 3px; background: var(--line); }
 .prog i.feito { background: var(--accent); }
 .prog i.erro { background: var(--halt); }
 .prog i.atual { background: var(--head); }
@@ -305,16 +305,16 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
           <p>Lê-se: “no estado q3, lendo 1, mova uma casa para a direita e vá para q4”.</p>
           <ul class="dicas">
             <li><b>Operações:</b> <code>1</code> escreve um traço, <code>0</code> apaga, <code>D</code> move para a direita, <code>E</code> move para a esquerda. Cada instrução faz uma única ação.</li>
-            <li><b>Números:</b> n é escrito com n + 1 traços (0 é <code>1</code>, 2 é <code>111</code>), e os argumentos são separados por um único 0.</li>
+            <li><b>Entrada:</b> o número n é escrito com n + 1 traços (0 é <code>1</code>, 2 é <code>111</code>), e os argumentos são separados por um único 0.</li>
             <li><b>Início:</b> a máquina começa no estado q1, sobre o traço mais à esquerda.</li>
             <li><b>Parada:</b> a máquina para quando não existe instrução para o par (estado, símbolo lido). Não pode haver duas instruções para o mesmo par.</li>
-            <li><b>Resultado:</b> no fim, a fita deve ter um único bloco de traços; o valor é o número de traços menos 1.</li>
+            <li><b>Saída:</b> a saída m é escrita com m traços (a fita em branco representa 0). A máquina deve parar no seu estado de maior número, com o cabeçote sobre o primeiro traço.</li>
             <li>Escreva uma quádrupla por linha. Comentários começam com <code>#</code>.</li>
           </ul>
         </div>
         <div class="editor">
           <div class="gutter" id="gutter" aria-hidden="true">1</div>
-          <textarea id="programa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Programa em quádruplas, uma instrução por linha" placeholder="Exemplo (sucessor):&#10;q1 1 E q2&#10;q2 0 1 q2"></textarea>
+          <textarea id="programa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Programa em quádruplas, uma instrução por linha" placeholder="Exemplo (sucessor):&#10;q1 1 1 q2"></textarea>
         </div>
         <div class="keypad" id="keypad" aria-label="Teclado de quádruplas">
           <button type="button" data-k="q">q</button>
@@ -446,6 +446,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     pausar();
     const p = parse(ta.value);
     M.regras = p.regras;
+    M.qMax = estadoMaior(p.regras);
     const e = lerEntrada();
     M.fita = new Map();
     M.pos = 0; M.passo = 0; M.log = []; M.parou = false; M.limite = false;
@@ -596,7 +597,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     else if (M.erroEntrada) { res.classList.add("error"); res.innerHTML = "<strong>Entrada inválida.</strong><span>" + esc(M.erroEntrada) + "</span>"; }
     else if (!M.pronto) { res.innerHTML = "<strong>Escreva pelo menos uma instrução.</strong>"; }
     else if (M.parou) {
-      res.classList.add("halt");
+      res.classList.add(avaliar().padrao ? "halt" : "limit");
       res.innerHTML = `<strong>Parou no passo ${M.passo.toLocaleString("pt-BR")}: não há instrução para (${esc(M.q)}, ${M.fita.get(M.pos) || "0"}).</strong>` + leitura();
     } else if (M.limite) {
       res.classList.add("limit");
@@ -617,18 +618,33 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     return t;
   }
 
-  function lerValor() {
+  // estado de maior número do programa (o livro exige que a máquina pare nele)
+  function estadoMaior(regras) {
+    let m = -1;
+    for (const r of regras.values()) for (const e of [r.q, r.q2]) { const x = /^q(\d+)$/.exec(e); if (!x) return null; m = Math.max(m, +x[1]); }
+    return m < 0 ? null : "q" + m;
+  }
+
+  // convenção de Carnielli e Epstein: a saída m é escrita com m traços (fita em branco para 0),
+  // com o cabeçote sobre o primeiro traço e a máquina no seu estado de maior número
+  function avaliar() {
     const t = conteudoFita();
-    if (!t) return { txt: t, val: null, motivo: "a fita ficou vazia, e isso não representa número algum" };
-    if (/^1+$/.test(t)) return { txt: t, val: t.length - 1 };
-    return { txt: t, val: null, motivo: "a fita não ficou com um único bloco de traços" };
+    const ks = [...M.fita.keys()];
+    const motivos = [];
+    let val = null;
+    if (!t) val = 0;
+    else if (/^1+$/.test(t)) { val = t.length; if (M.pos !== Math.min(...ks)) motivos.push("o cabeçote não está sobre o primeiro traço"); }
+    else motivos.push("a fita não ficou em branco nem com um único bloco de traços");
+    if (M.qMax && M.q !== M.qMax) motivos.push(`a máquina parou em ${M.q}, mas o estado de maior número do programa é ${M.qMax}`);
+    return { txt: t, val, padrao: val !== null && motivos.length === 0, motivos };
   }
 
   function leitura() {
-    const v = lerValor();
-    if (v.val === null) return `<span>Fita final: <span class="mono">${esc(v.txt || "vazia")}</span>. Não dá para ler um número: ${v.motivo}.</span>`;
+    const v = avaliar();
+    const fitaFim = v.txt ? `<span class="mono">${esc(v.txt)}</span> (${v.txt.length} traço${v.txt.length > 1 ? "s" : ""})` : "em branco";
+    if (!v.padrao) return `<span>Fita final: ${fitaFim}.</span><span>Fora da configuração padrão: ${esc(v.motivos.join("; "))}. Pela definição, a máquina não calcula uma saída para esta entrada.</span>`;
     const f = M.nums ? `f(${M.nums.join(", ")}) = ` : "";
-    return `<span>Fita final: <span class="mono">${v.txt}</span> (${v.txt.length} traço${v.txt.length > 1 ? "s" : ""})</span><span class="val">${f}${v.val}</span>`;
+    return `<span>Fita final: ${fitaFim}${v.txt ? ", cabeçote no primeiro traço" : ""}; estado ${esc(M.q)}, o de maior número.</span><span class="val">${f}${v.val}</span>`;
   }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -731,57 +747,60 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   const reduz = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /*DADOS-INICIO*/
+  // Convenção de Carnielli e Epstein (2009, cap. 8): a entrada n é escrita com n + 1 traços;
+  // a saída m, com m traços (fita em branco para 0); a máquina para no seu estado de maior número,
+  // com o cabeçote sobre o primeiro traço da saída.
   // Aquecimento: dada a operação e parte do código, escolher a próxima linha.
   // tipo (usado só na verificação automática): conflito, naoUsada, laco, errado.
   const AQUEC = [
     {
       id: "suc",
       titulo: "Sucessor: S(n) = n + 1",
-      desc: "A entrada n vem escrita com n + 1 traços. Para chegar a n + 1, basta acrescentar um traço. Esta máquina acrescenta o traço à esquerda do bloco.",
+      desc: "A entrada n vem com n + 1 traços. A saída m deve ter m traços, e a máquina precisa parar no seu estado de maior número, sobre o primeiro traço. Para o sucessor, basta uma única linha.",
       demo: [2],
-      dado: [["q1 1 E q2", "anda uma casa à esquerda"]],
-      correta: ["q2 0 1 q2", "escreve um traço e para"],
+      dado: [],
+      correta: ["q1 1 1 q2", "muda para q2 e para"],
       resto: [],
-      casos: [0, 1, 2, 3], f: (n) => n + 1,
-      porque: "Depois de andar, a máquina está em q2 sobre uma casa em branco e escreve ali o traço que faltava. Como não há instrução para (q2, 1), ela para com n + 2 traços, que representam n + 1.",
+      casos: [0, 1, 2, 3, 5], f: (n) => n + 1,
+      porque: "A entrada já tem n + 1 traços, que é exatamente a saída S(n) = n + 1. A máquina só precisa mudar para q2, o estado de maior número, sem sair do lugar: em (q2, 1) não há instrução, e ela para sobre o primeiro traço.",
       erradas: [
-        { l: "q2 1 1 q2", tipo: "naoUsada", porque: "Depois de andar para a esquerda, a máquina lê 0 (casa em branco), não 1. Esta instrução nunca seria usada: a máquina pararia em (q2, 0) sem escrever nada, e a fita continuaria valendo n." },
-        { l: "q2 0 E q2", tipo: "laco", porque: "A máquina continuaria andando para a esquerda, de casa em branco em casa em branco, sem nunca parar." },
-        { l: "q1 1 1 q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Com duas instruções para o mesmo par (estado, símbolo lido), a máquina não saberia qual seguir: ela precisa ser determinística." }
+        { l: "q1 1 E q2", tipo: "errado", porque: "A máquina andaria para a esquerda e pararia numa casa em branco, fora do bloco. Pela convenção, ela deve parar sobre o primeiro traço da saída." },
+        { l: "q1 1 0 q2", tipo: "errado", porque: "A máquina apagaria um traço. Sobrariam n traços, que representam n, e não n + 1." },
+        { l: "q2 1 1 q1", tipo: "naoUsada", porque: "A máquina começa em q1, não em q2. Ela pararia logo no início, ainda em q1, que não é o estado de maior número do programa." }
       ]
     },
     {
-      id: "dir",
-      titulo: "Sucessor pela direita",
-      desc: "Outra máquina para S(n) = n + 1: agora o traço novo entra à direita do bloco. A primeira linha leva a máquina até o fim do bloco.",
-      demo: [2],
-      dado: [["q1 1 D q1", "anda até o fim do bloco"]],
-      correta: ["q1 0 1 q2", "escreve 1 no primeiro branco"],
-      resto: [],
-      casos: [0, 1, 2, 3], f: (n) => n + 1,
-      porque: "No fim do bloco a máquina lê o primeiro 0. Ela escreve ali um traço e muda para q2. Como não há instrução para (q2, 1), ela para.",
-      erradas: [
-        { l: "q1 0 D q1", tipo: "laco", porque: "Ao encontrar o branco, a máquina continuaria andando para a direita, sem escrever e sem parar." },
-        { l: "q1 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço, mas continua em q1 lendo 1. A linha 1 manda andar de novo, e ela acrescenta traços para a direita indefinidamente. É a mudança de estado que permite parar." },
-        { l: "q1 1 1 q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1: a máquina deixaria de ser determinística." }
-      ]
-    },
-    {
-      id: "soma",
+      id: "soma1",
       titulo: "Soma: f(m, n) = m + n",
-      desc: "A entrada tem m + 1 traços, um 0 e n + 1 traços. Depois de preencher o separador, a fita fica com m + n + 3 traços, dois a mais do que a representação de m + n. Agora a máquina precisa ir até o fim e apagar dois traços.",
+      desc: "A entrada tem m + 1 traços, um 0 e n + 1 traços. A máquina preenche o separador com um traço, volta ao início e apaga três traços: (m + 1) + 1 + (n + 1) − 3 = m + n.",
       demo: [1, 2],
-      dado: [["q1 1 D q1", "percorre o 1º bloco"], ["q1 0 1 q2", "preenche o separador"], ["q2 1 D q2", "percorre o 2º bloco"]],
-      correta: ["q2 0 E q3", "achou o fim: volta"],
-      resto: ["q3 1 0 q3", "q3 0 E q4", "q4 1 0 q4", "q4 0 E q5", "q5 1 E q5", "q5 0 D q6"],
-      casos: [[0, 0], [1, 2], [2, 1], [3, 0]], f: (m, n) => m + n,
-      porque: "No fim do segundo bloco a máquina lê 0. Ela volta uma casa, ficando sobre o último traço, e muda para q3, o estado que começa a apagar os dois traços extras.",
+      dado: [["q1 1 D q1", "percorre o 1º bloco"], ["q1 0 1 q2", "preenche o separador"]],
+      correta: ["q2 1 E q2", "volta para a esquerda"],
+      resto: ["q2 0 D q3", "q3 1 0 q4", "q4 0 D q5", "q5 1 0 q6", "q6 0 D q7", "q7 1 0 q8", "q8 0 D q9"],
+      casos: [[0, 0], [0, 2], [1, 1], [1, 2], [2, 0], [3, 2]], f: (m, n) => m + n,
+      porque: "Depois de preencher o separador, a máquina está em q2 sobre esse traço. Ela anda para a esquerda, sem mudar de estado, até sair do primeiro bloco: é no início da fita que ela vai apagar os três traços.",
       erradas: [
-        { l: "q2 0 1 q3", tipo: "errado", porque: "A máquina acrescentaria mais um traço em vez de começar a apagar. Com o restante da soma, ela terminaria com m + n + 1, um a mais do que o resultado." },
-        { l: "q2 0 D q2", tipo: "laco", porque: "A máquina continuaria andando para a direita sobre casas em branco, sem nunca parar." },
-        { l: "q2 1 E q3", tipo: "conflito", porque: "Já existe instrução para (q2, 1) na linha 3: não pode haver duas instruções para o mesmo par." }
+        { l: "q2 1 D q2", tipo: "errado", porque: "A máquina iria para a direita, até depois do segundo bloco, e não voltaria ao início, onde precisa apagar os três traços." },
+        { l: "q2 0 E q2", tipo: "naoUsada", porque: "Neste momento a máquina lê 1 (o traço que acabou de escrever), não 0. A instrução não diz o que fazer agora." },
+        { l: "q1 1 E q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1: a máquina deixaria de ser determinística." }
+      ]
+    },
+    {
+      id: "soma2",
+      titulo: "Soma: apagando os três traços",
+      desc: "Continuação da soma. A máquina já preencheu o separador, voltou e está em q3, sobre o primeiro traço da fita. Agora ela precisa apagar três traços, um de cada vez.",
+      demo: [1, 2],
+      dado: [["q1 1 D q1", "percorre o 1º bloco"], ["q1 0 1 q2", "preenche o separador"], ["q2 1 E q2", "volta para a esquerda"], ["q2 0 D q3", "passou do início: um passo à direita"]],
+      correta: ["q3 1 0 q4", "apaga o 1º traço"],
+      resto: ["q4 0 D q5", "q5 1 0 q6", "q6 0 D q7", "q7 1 0 q8", "q8 0 D q9"],
+      casos: [[0, 0], [0, 2], [1, 1], [1, 2], [2, 0], [3, 2]], f: (m, n) => m + n,
+      porque: "Em q3, sobre o primeiro traço, a máquina o apaga e muda para q4. As linhas seguintes andam uma casa e apagam o segundo e o terceiro traços.",
+      erradas: [
+        { l: "q3 1 D q4", tipo: "errado", porque: "A máquina andaria sem apagar. Ela precisa tirar três traços para chegar a m + n." },
+        { l: "q3 0 0 q4", tipo: "naoUsada", porque: "A máquina está sobre o primeiro traço: lê 1, não 0." },
+        { l: "q3 1 0 q3", tipo: "errado", porque: "A máquina apagaria o traço, mas continuaria em q3, agora lendo 0. Sem instrução para (q3, 0), pararia ali, com dois traços a mais e fora do estado de maior número." }
       ],
-      depois: "O restante da soma apaga os dois traços extras (estados q3 e q4) e volta ao início (q5). A máquina completa está no Simulador, em Carregar exemplo."
+      depois: "As linhas seguintes repetem a ideia: andam uma casa, apagam o segundo traço, andam, apagam o terceiro e dão um último passo à direita. A máquina para em q9, o estado de maior número, sobre o primeiro traço do resultado."
     }
   ];
 
@@ -790,10 +809,11 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     {
       id: "zero", idSim: "zero", nivel: "Básico", nome: "Função zero: Z(n) = 0", fn: "Z",
       f: () => 0, casos: [0, 1, 2, 3, 5], demo: [2], exec: [3],
-      enun: "Entrada: n, escrito com n + 1 traços. A máquina deve terminar com um único traço na fita, a representação de 0.",
-      ideia: "Ideia: apagar os traços um a um, da esquerda para a direita, e escrever um traço no fim.",
-      ex: "Z(3): 1111 → 1",
-      parada: "(q3, 1)",
+      enun: "Entrada: n, escrito com n + 1 traços. Saída: 0, que é representado pela fita em branco.",
+      ideia: "Ideia: apagar os traços um a um, da esquerda para a direita, e parar no estado de maior número.",
+      ex: "Z(3): 1111 → fita em branco",
+      parada: "(q3, 0)", final: "q3",
+      nota: "A máquina do livro tem ainda a linha q3 1 1 q1. Com ela, a máquina também zera entradas com vários argumentos (como 11 0 111): ao pular um separador e achar outro traço, ela volta a q1 e continua apagando.",
       passos: [
         {
           correta: ["q1 1 0 q2", "apaga o traço"],
@@ -808,97 +828,97 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
           correta: ["q2 0 D q1", "anda e repete"],
           porque: "Depois de apagar, a casa ficou em branco: a máquina está em q2 lendo 0. Ela anda uma casa para a direita e volta a q1. Assim a linha 1 apaga o próximo traço, e o ciclo se repete.",
           erradas: [
-            { l: "q2 1 D q1", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1. Esta instrução nunca seria usada, e a máquina pararia em (q2, 0) com um traço a menos." },
+            { l: "q2 1 D q1", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1. Esta instrução nunca seria usada, e a máquina pararia em (q2, 0) com os outros traços ainda na fita." },
             { l: "q2 0 E q1", tipo: "errado", porque: "A máquina andaria para o lado errado: os traços que ainda precisam ser apagados estão à direita." },
             { l: "q2 0 1 q1", tipo: "laco", porque: "A máquina reescreveria o traço que acabou de apagar e voltaria a q1 lendo 1. A linha 1 apaga de novo, esta linha reescreve, e ela fica nesse vaivém para sempre." }
           ]
         },
         {
-          correta: ["q1 0 1 q3", "escreve um traço"],
-          porque: "Quando todos os traços foram apagados, a máquina está em q1 lendo o 0 logo depois do bloco. Ela escreve ali um único traço, a representação de 0, e muda para q3.",
+          correta: ["q1 0 D q3", "fita apagada: anda e muda para q3"],
+          porque: "Quando todos os traços foram apagados, a máquina está em q1 lendo 0. Ela anda uma casa e muda para q3, o estado de maior número. A fita em branco é a representação de 0.",
           erradas: [
-            { l: "q1 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço, mas continua em q1. Lendo 1 em q1, a linha 1 o apaga de novo, e ela segue para a direita apagando e escrevendo, sem parar." },
-            { l: "q1 0 D q1", tipo: "laco", porque: "Ao achar o branco, a máquina continuaria andando para a direita, sem escrever e sem parar." },
-            { l: "q1 1 1 q3", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, neste momento a máquina lê 0, não 1." }
+            { l: "q1 0 1 q3", tipo: "errado", porque: "A máquina escreveria um traço. Na convenção do livro, um traço representa 1, não 0: a saída 0 é a fita em branco." },
+            { l: "q1 0 D q1", tipo: "laco", porque: "Continuando em q1, a máquina andaria para a direita sobre casas em branco, sem parar." },
+            { l: "q1 1 D q3", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, neste momento a máquina lê 0, não 1." }
           ]
         }
       ],
       fim: {
-        porque: "Em (q3, 1) não há instrução, então a máquina para. A fita tem um único traço: Z(n) = 0 para todo n.",
+        porque: "Em (q3, 0) não há instrução: a máquina para em q3, o estado de maior número, com a fita em branco. Logo Z(n) = 0 para todo n.",
         erradas: [
-          { l: "q3 1 0 q3", tipo: "errado", porque: "A máquina apagaria o único traço. A fita ficaria vazia, o que não representa número algum." },
-          { l: "q3 1 E q1", tipo: "laco", porque: "A máquina andaria para a esquerda, escreveria outro traço (linha 3) e repetiria isso para sempre: nunca pararia." },
-          { l: "q3 1 1 q3", tipo: "laco", porque: "A máquina escreveria 1 sobre o próprio traço e continuaria em q3. A fita não muda, mas sempre há instrução, então ela nunca para." }
+          { l: "q3 0 1 q3", tipo: "errado", porque: "A máquina escreveria um traço, e um traço representa 1, não 0." },
+          { l: "q3 0 E q1", tipo: "laco", porque: "A máquina voltaria a q1 lendo 0, a linha 3 a mandaria de novo para q3, e ela ficaria indo e voltando entre duas casas em branco para sempre." }
         ]
       }
     },
     {
       id: "mais2", idSim: "mais2", nivel: "Médio", nome: "f(n) = n + 2", fn: "f",
-      f: (n) => n + 2, casos: [0, 1, 2, 4], demo: [2], exec: [2],
-      enun: "Entrada: n, escrito com n + 1 traços. A máquina deve terminar com n + 3 traços, a representação de n + 2.",
-      ideia: "Ideia: o sucessor acrescenta um traço à esquerda do bloco. Aqui são dois.",
-      ex: "f(2): 111 → 11111",
-      parada: "(q4, 1)",
+      f: (n) => n + 2, casos: [0, 1, 2, 3, 5], demo: [2], exec: [2],
+      enun: "Entrada: n, escrito com n + 1 traços. Saída: n + 2 traços, com a máquina parada no seu estado de maior número sobre o primeiro traço.",
+      ideia: "Ideia: a entrada já tem n + 1 traços. Basta acrescentar um traço no fim do bloco e voltar ao primeiro traço.",
+      ex: "f(2): 111 → 1111",
+      parada: "(q3, 1)", final: "q3",
+      nota: "Também funciona uma máquina mais curta, que acrescenta o traço à esquerda: q1 1 E q2, q2 0 1 q3.",
       passos: [
         {
-          correta: ["q1 1 E q2", "anda à esquerda"],
-          porque: "A máquina sai do bloco pela esquerda e fica sobre a casa em branco onde vai escrever o primeiro traço novo.",
+          correta: ["q1 1 D q1", "anda até o fim do bloco"],
+          porque: "Enquanto lê traços, a máquina só anda para a direita, sem mudar de estado, até chegar ao primeiro branco depois do bloco.",
           erradas: [
-            { l: "q1 1 1 q2", tipo: "errado", porque: "Escrever 1 onde já há um traço não muda a fita, e a máquina continua no mesmo lugar, sem abrir espaço para os traços novos." },
-            { l: "q1 0 E q2", tipo: "naoUsada", porque: "No início a máquina lê 1, não 0. Esta instrução não diz o que fazer agora, e a máquina pararia sem dar nenhum passo." },
-            { l: "q1 1 0 q2", tipo: "errado", porque: "A máquina apagaria um traço da entrada. Começaria perdendo um traço, e no fim teria só n + 1." }
+            { l: "q1 1 0 q1", tipo: "errado", porque: "A máquina apagaria o primeiro traço e, com a linha seguinte, o reescreveria no mesmo lugar. No fim, a fita teria só n + 1 traços." },
+            { l: "q1 1 1 q2", tipo: "errado", porque: "A máquina só mudaria de estado. Com as outras linhas, voltaria ao início sem escrever nada e pararia com n + 1 traços: isso é o sucessor, não n + 2." },
+            { l: "q1 0 D q1", tipo: "naoUsada", porque: "No início a máquina lê 1, não 0. Esta instrução não diz o que fazer agora." }
           ]
         },
         {
-          correta: ["q2 0 1 q3", "escreve o 1º traço novo"],
-          porque: "Sobre a casa em branco, a máquina escreve o primeiro traço novo e muda para q3.",
+          correta: ["q1 0 1 q2", "escreve um traço no primeiro branco"],
+          porque: "No fim do bloco a máquina lê 0. Ela escreve ali o traço que faltava e muda para q2: agora a fita tem n + 2 traços.",
           erradas: [
-            { l: "q2 0 1 q2", tipo: "errado", porque: "A máquina escreve o traço, mas continua em q2. Em (q2, 1) não há o que fazer, então ela pararia com um só traço novo: n + 1." },
-            { l: "q2 1 1 q3", tipo: "naoUsada", porque: "Neste momento a máquina lê 0 (a casa em branco), não 1. A instrução nunca seria usada." },
-            { l: "q2 0 E q3", tipo: "errado", porque: "A máquina andaria mais uma casa sem escrever. Traços só aparecem com a operação 1." }
+            { l: "q1 0 1 q1", tipo: "laco", porque: "A máquina escreveria o traço, mas continuaria em q1 lendo 1. A linha 1 manda andar de novo, e ela acrescentaria traços para a direita sem parar." },
+            { l: "q1 0 D q2", tipo: "errado", porque: "A máquina andaria sem escrever. Traços só aparecem com a operação 1." },
+            { l: "q1 1 1 q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, aqui a máquina lê 0." }
           ]
         },
         {
-          correta: ["q3 1 E q4", "anda mais uma casa"],
-          porque: "A máquina está sobre o traço que acabou de escrever. Ela anda mais uma casa para a esquerda, até o próximo branco.",
+          correta: ["q2 1 E q2", "volta pelo bloco"],
+          porque: "A máquina está sobre o traço que acabou de escrever. Ela anda para a esquerda, sem mudar de estado, até sair do bloco: precisa terminar sobre o primeiro traço.",
           erradas: [
-            { l: "q3 1 D q4", tipo: "errado", porque: "A máquina voltaria para cima do bloco original, onde não há espaço para o segundo traço novo. Ela terminaria com n + 1." },
-            { l: "q3 0 E q4", tipo: "naoUsada", porque: "A máquina está sobre o traço que acabou de escrever: lê 1, não 0." },
-            { l: "q2 1 E q4", tipo: "naoUsada", porque: "A máquina está em q3, não em q2. Esta instrução nunca seria usada." }
+            { l: "q2 1 D q2", tipo: "errado", porque: "A máquina andaria para a direita, para longe do bloco, e pararia numa casa em branco, e não sobre o primeiro traço." },
+            { l: "q2 0 E q2", tipo: "naoUsada", porque: "Neste momento a máquina lê 1 (o traço que acabou de escrever), não 0." },
+            { l: "q2 1 E q3", tipo: "errado", porque: "A máquina daria um único passo para a esquerda e pararia em q3 sobre o último traço da entrada, e não sobre o primeiro (só daria certo para n = 0)." }
           ]
         },
         {
-          correta: ["q4 0 1 q4", "escreve o 2º traço novo"],
-          porque: "A máquina escreve o segundo traço novo e continua em q4. Em (q4, 1) não há instrução: ela para com n + 3 traços.",
+          correta: ["q2 0 D q3", "passou do início: um passo à direita"],
+          porque: "Ao sair do bloco pela esquerda, a máquina lê 0. Ela dá um passo para a direita e muda para q3, o estado de maior número: agora está sobre o primeiro traço.",
           erradas: [
-            { l: "q4 0 1 q1", tipo: "laco", porque: "A máquina escreve o traço e volta a q1 lendo 1. A linha 1 recomeça tudo, e ela acrescenta traços à esquerda para sempre." },
-            { l: "q4 1 1 q4", tipo: "naoUsada", porque: "Nesta casa a máquina lê 0, não 1. A instrução nunca seria usada, e a máquina pararia com n + 1." },
-            { l: "q4 0 D q4", tipo: "errado", porque: "A máquina andaria para a direita sem escrever, de volta ao traço novo, e pararia com n + 1." }
+            { l: "q2 0 D q2", tipo: "laco", porque: "Ficando em q2, a máquina leria de novo o primeiro traço, a linha 3 a mandaria para a esquerda, e ela ficaria nesse vaivém para sempre." },
+            { l: "q2 0 1 q3", tipo: "errado", porque: "A máquina escreveria mais um traço à esquerda do bloco. A fita terminaria com n + 3 traços." },
+            { l: "q2 1 D q3", tipo: "conflito", porque: "Já existe instrução para (q2, 1) na linha 3. Além disso, aqui a máquina lê 0." }
           ]
         }
       ],
       fim: {
-        porque: "Em (q4, 1) não há instrução: a máquina para com n + 3 traços, ou seja, f(n) = n + 2.",
+        porque: "Em (q3, 1) não há instrução: a máquina para em q3, o estado de maior número, sobre o primeiro dos n + 2 traços. Logo f(n) = n + 2.",
         erradas: [
-          { l: "q4 1 E q4", tipo: "laco", porque: "A máquina andaria para a esquerda e, com a linha 4, escreveria outro traço, e mais outro, sem nunca parar." },
-          { l: "q4 1 0 q4", tipo: "laco", porque: "A máquina apagaria o traço recém-escrito. A linha 4 o escreveria de novo, e ela ficaria apagando e escrevendo na mesma casa para sempre." }
+          { l: "q3 1 E q4", tipo: "errado", porque: "A máquina daria mais um passo para a esquerda e pararia em q4 numa casa em branco, fora do bloco." },
+          { l: "q3 1 0 q3", tipo: "errado", porque: "A máquina apagaria o primeiro traço: sobrariam n + 1 traços, e o cabeçote ficaria numa casa em branco." }
         ]
       }
     },
     {
       id: "proj", idSim: "proj", nivel: "Desafio", nome: "Projeção: P(m, n) = m", fn: "P",
-      f: (m) => m, casos: [[0, 0], [0, 2], [1, 1], [1, 2], [2, 0], [3, 2]], demo: [1, 2], exec: [1, 2],
-      enun: "Entrada: m + 1 traços, um 0 e n + 1 traços. A máquina deve terminar só com o primeiro bloco, a representação de m.",
-      ideia: "Ideia: atravessar o primeiro bloco sem mexer nele, pular o separador e apagar o segundo bloco.",
-      ex: "P(1, 2): 11 0 111 → 11",
-      parada: "(q2, 0)",
+      f: (m) => m, casos: [[0, 0], [0, 2], [1, 1], [1, 2], [2, 0], [2, 1], [3, 2]], demo: [2, 1], exec: [2, 1],
+      enun: "Entrada: m + 1 traços, um 0 e n + 1 traços. Saída: m traços (a fita em branco, se m = 0), com a máquina parada no seu estado de maior número sobre o primeiro traço.",
+      ideia: "Ideia: apagar o segundo bloco, voltar, apagar um traço do primeiro bloco e parar no início dele.",
+      ex: "P(2, 1): 111 0 11 → 11",
+      parada: "(q7, 1), ou (q7, 0) se m = 0", final: "q7",
       passos: [
         {
           correta: ["q1 1 D q1", "percorre o 1º bloco"],
           porque: "Enquanto lê traços do primeiro bloco, a máquina só anda para a direita, sem mudar de estado e sem mexer neles.",
           erradas: [
-            { l: "q1 1 0 q1", tipo: "errado", porque: "A máquina apagaria o primeiro bloco, que é justamente o que deve ficar na fita." },
-            { l: "q1 1 E q1", tipo: "errado", porque: "A máquina andaria para a esquerda, para longe do segundo bloco, que é o que precisa ser apagado." },
+            { l: "q1 1 0 q1", tipo: "laco", porque: "A máquina apagaria o primeiro bloco, que é justamente o que deve sobrar, e depois não pararia mais." },
+            { l: "q1 1 E q1", tipo: "laco", porque: "A máquina andaria para a esquerda, para longe do segundo bloco, e acabaria andando pela fita sem parar." },
             { l: "q1 0 D q1", tipo: "naoUsada", porque: "No início a máquina lê 1, não 0. Esta instrução não diz o que fazer agora." }
           ]
         },
@@ -907,12 +927,12 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
           porque: "No fim do primeiro bloco a máquina lê o separador (0). Ela anda para a direita e muda para q2: agora está no segundo bloco, e q2 será o estado que apaga.",
           erradas: [
             { l: "q1 0 D q1", tipo: "laco", porque: "Continuando em q1, a máquina atravessaria o segundo bloco sem apagá-lo e depois andaria para a direita para sempre." },
-            { l: "q1 0 E q2", tipo: "errado", porque: "A máquina voltaria para dentro do primeiro bloco, onde começaria a apagar a resposta." },
+            { l: "q1 0 E q2", tipo: "laco", porque: "A máquina voltaria para dentro do primeiro bloco, onde começaria a apagar a resposta." },
             { l: "q1 1 D q2", tipo: "conflito", porque: "Já existe instrução para (q1, 1) na linha 1. Além disso, aqui a máquina lê 0." }
           ]
         },
         {
-          correta: ["q2 1 0 q3", "apaga um traço"],
+          correta: ["q2 1 0 q3", "apaga um traço do 2º bloco"],
           porque: "No segundo bloco, em q2 lendo 1, a máquina apaga o traço e muda para q3.",
           erradas: [
             { l: "q2 1 D q3", tipo: "errado", porque: "A máquina andaria sem apagar, e o segundo bloco precisa sumir da fita." },
@@ -922,19 +942,73 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
         },
         {
           correta: ["q3 0 D q2", "anda e repete"],
-          porque: "A casa agora está em branco (q3 lendo 0). A máquina anda para a direita e volta a q2, para apagar o próximo traço. Esse laço termina quando o bloco acaba.",
+          porque: "A casa agora está em branco (q3 lendo 0). A máquina anda para a direita e volta a q2, para apagar o próximo traço. Esse laço termina quando o segundo bloco acaba.",
           erradas: [
             { l: "q3 0 D q3", tipo: "laco", porque: "A máquina andaria, mas ficaria em q3, que não sabe apagar. Se houver outro traço, ela para sobre ele sem apagá-lo; se não houver, anda para a direita para sempre." },
-            { l: "q3 0 E q2", tipo: "errado", porque: "A máquina voltaria para o separador. Em (q2, 0) ela pararia sem terminar de apagar o segundo bloco, sempre que ele tiver mais de um traço." },
+            { l: "q3 0 E q2", tipo: "errado", porque: "A máquina voltaria para o separador e começaria a volta antes de apagar todo o segundo bloco (sempre que ele tiver mais de um traço)." },
             { l: "q3 1 D q2", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1. A instrução nunca seria usada." }
+          ]
+        },
+        {
+          correta: ["q2 0 E q4", "2º bloco apagado: volta"],
+          porque: "Quando q2 lê 0, o segundo bloco acabou. A máquina começa a voltar para a esquerda, agora em q4.",
+          erradas: [
+            { l: "q2 0 E q2", tipo: "laco", porque: "Continuando em q2, a máquina voltaria apagando também o primeiro bloco e depois andaria para a esquerda para sempre." },
+            { l: "q2 0 1 q4", tipo: "errado", porque: "A máquina escreveria um traço novo depois do segundo bloco, e o resultado ficaria errado." },
+            { l: "q3 0 E q4", tipo: "conflito", porque: "Já existe instrução para (q3, 0) na linha 4. Além disso, aqui a máquina está em q2." }
+          ]
+        },
+        {
+          correta: ["q4 0 E q4", "atravessa os brancos"],
+          porque: "Em q4 a máquina anda para a esquerda sobre as casas em branco (o segundo bloco apagado e o separador) até encontrar o último traço do primeiro bloco.",
+          erradas: [
+            { l: "q4 0 D q4", tipo: "laco", porque: "A máquina andaria para a direita, para longe dos traços, e nunca pararia." },
+            { l: "q4 0 E q5", tipo: "errado", porque: "A máquina daria um único passo para a esquerda e mudaria de estado ainda sobre o branco, sem chegar ao primeiro bloco." },
+            { l: "q4 1 E q4", tipo: "naoUsada", porque: "Aqui a máquina lê 0 (uma casa apagada), não 1." }
+          ]
+        },
+        {
+          correta: ["q4 1 0 q5", "apaga o último traço do 1º bloco"],
+          porque: "O primeiro bloco tem m + 1 traços, e a saída precisa de m. A máquina apaga o último deles e muda para q5.",
+          erradas: [
+            { l: "q4 1 D q5", tipo: "errado", porque: "A máquina passaria pelo traço sem apagá-lo, e o primeiro bloco ficaria com m + 1 traços." },
+            { l: "q4 1 E q5", tipo: "errado", porque: "A máquina seguiria para a esquerda sem apagar nada, e o primeiro bloco ficaria com m + 1 traços." },
+            { l: "q4 0 0 q5", tipo: "conflito", porque: "Já existe instrução para (q4, 0) na linha 6. Além disso, aqui a máquina lê 1." }
+          ]
+        },
+        {
+          correta: ["q5 0 E q6", "anda para a esquerda"],
+          porque: "A casa ficou em branco. A máquina anda para a esquerda e muda para q6, que vai percorrer o que sobrou do primeiro bloco.",
+          erradas: [
+            { l: "q5 0 D q6", tipo: "errado", porque: "A máquina andaria para a direita, para longe dos traços que sobraram, e pararia numa casa em branco." },
+            { l: "q5 0 E q5", tipo: "laco", porque: "Ficando em q5, a máquina pararia sobre um traço sem estar no estado de maior número, ou, se m = 0, andaria para a esquerda para sempre." },
+            { l: "q5 1 E q6", tipo: "naoUsada", porque: "Depois de apagar, a máquina lê 0, não 1." }
+          ]
+        },
+        {
+          correta: ["q6 1 E q6", "percorre o 1º bloco"],
+          porque: "Enquanto lê traços, a máquina anda para a esquerda sem mudar de estado, até sair do primeiro bloco.",
+          erradas: [
+            { l: "q6 1 D q6", tipo: "errado", porque: "A máquina andaria para a direita, para longe do início do bloco." },
+            { l: "q6 1 0 q6", tipo: "errado", porque: "A máquina apagaria os traços que sobraram, que são justamente a resposta." },
+            { l: "q6 0 E q6", tipo: "naoUsada", porque: "Aqui a máquina lê 1 (um traço do primeiro bloco), não 0." }
+          ]
+        },
+        {
+          correta: ["q6 0 D q7", "passou do início: um passo à direita"],
+          porque: "Ao sair do bloco pela esquerda, a máquina lê 0. Ela dá um passo para a direita e muda para q7, o estado de maior número, sobre o primeiro traço. Se m = 0, a fita já está em branco.",
+          erradas: [
+            { l: "q6 0 D q6", tipo: "laco", porque: "Ficando em q6, a máquina leria de novo o primeiro traço, a linha 9 a mandaria para a esquerda, e ela ficaria nesse vaivém para sempre." },
+            { l: "q6 0 1 q7", tipo: "errado", porque: "A máquina escreveria mais um traço à esquerda do bloco: o resultado seria m + 1." },
+            { l: "q6 1 D q7", tipo: "conflito", porque: "Já existe instrução para (q6, 1) na linha 9. Além disso, aqui a máquina lê 0." }
           ]
         }
       ],
       fim: {
-        porque: "Quando o segundo bloco acaba, a máquina está em (q2, 0), onde não há instrução: ela para. Sobra só o primeiro bloco, ou seja, P(m, n) = m.",
+        porque: "Em q7 não há instrução: a máquina para no estado de maior número, sobre o primeiro dos m traços (ou com a fita em branco, se m = 0). Logo P(m, n) = m.",
         erradas: [
-          { l: "q2 0 D q2", tipo: "laco", porque: "A máquina andaria para a direita sobre casas em branco para sempre." },
-          { l: "q2 0 E q2", tipo: "laco", porque: "A máquina voltaria para a esquerda, começaria a apagar o primeiro bloco (a resposta) e nunca pararia." }
+          { l: "q7 1 E q7", tipo: "errado", porque: "A máquina daria mais um passo para a esquerda e pararia numa casa em branco, fora do bloco." },
+          { l: "q7 1 D q8", tipo: "errado", porque: "A máquina andaria mais uma casa e pararia em q8, fora do primeiro traço." }
         ]
       }
     }
@@ -980,7 +1054,24 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     for (let i = a; i <= b; i++) t += f.get(i) || "0";
     return t;
   }
-  function valorDe(f) { const t = fitaTxt(f); return /^1+$/.test(t) ? t.length - 1 : null; }
+  // estado de maior número do programa (convenção do livro: a máquina para nele)
+  function estadoMaior(linhas) {
+    let m = -1;
+    for (const l of linhas) { const [q, , , q2] = l.trim().split(/\s+/); for (const e of [q, q2]) { const r = /^q(\d+)$/.exec(e || ""); if (r) m = Math.max(m, +r[1]); } }
+    return m < 0 ? null : "q" + m;
+  }
+  // saída m: fita em branco (m = 0) ou um único bloco de m traços com o cabeçote no primeiro, no estado de maior número
+  function avaliar(f, pos, q, qMax) {
+    const ks = [...f.keys()].sort((x, y) => x - y);
+    const t = fitaTxt(f);
+    const motivos = [];
+    let val = null;
+    if (!ks.length) val = 0;
+    else if (/^1+$/.test(t)) { val = t.length; if (pos !== ks[0]) motivos.push("o cabeçote não está sobre o primeiro traço"); }
+    else motivos.push("a fita não ficou em branco nem com um único bloco de traços");
+    if (qMax && q !== qMax) motivos.push(`parou em ${q}, mas o estado de maior número é ${qMax}`);
+    return { val, t, padrao: val !== null && motivos.length === 0, motivos };
+  }
   function entradaTxt(args) {
     const nm = args.length === 1 ? ["n"] : ["m", "n"];
     return args.map((x, i) => `${nm[i]} = ${x}`).join(", ") + " (" + args.map((x) => "1".repeat(x + 1)).join(" 0 ") + ")";
@@ -1009,7 +1100,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   }
 
   // ---------- estado salvo ----------
-  const KEY = "turing-de-bolso-guiado-v1";
+  const KEY = "turing-de-bolso-guiado-v2";
   function novoEstado() { return { aba: "aq", aq: { resp: [], i: 0 }, des: {}, atual: null, liberado: false }; }
   let S = novoEstado();
   try {
@@ -1215,7 +1306,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     const anteriores = g.passos.slice(0, p).map((x) => x.correta);
     let cod;
     if (!final) cod = codigoHTML(feito ? anteriores.concat([item.correta]) : anteriores, feito ? { nova: p } : { vazia: true });
-    else cod = codigoHTML(anteriores, feito ? { fim: `sem instrução para ${g.parada}: a máquina para` } : { vazia: true, vaziaTxt: "falta alguma?" });
+    else cod = codigoHTML(anteriores, feito ? { fim: `sem instrução para ${g.parada}: a máquina para em ${g.final}` } : { vazia: true, vaziaTxt: "falta alguma?" });
 
     let h = `<div class="card">`;
     h += `<div class="card-head"><span class="eyebrow">${esc(g.nivel)} · passo ${p + 1} de ${tot}</span>${progressoHTML(tot, e.resp, p)}</div>`;
@@ -1248,8 +1339,9 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     h += `<h2>${esc(g.nome)}</h2>`;
     h += `<p><span class="placar">${ok} de ${tot}</span> escolhas certas de primeira</p>`;
     h += `<h3>Resposta correta</h3>`;
-    h += codigoHTML(g.passos.map((x) => x.correta), { fim: `sem instrução para ${g.parada}: a máquina para` });
+    h += codigoHTML(g.passos.map((x) => x.correta), { fim: `sem instrução para ${g.parada}: a máquina para em ${g.final}` });
     h += `<p>${g.fim.porque}</p>`;
+    if (g.nota) h += `<p class="lead">${esc(g.nota)}</p>`;
     h += `</div>`;
     h += `<div class="card"><h3>A máquina funcionando</h3><p class="lead">Escolha uma entrada. A máquina roda sozinha; use Passo e Voltar para ver cada instrução.</p><div class="mini" id="miniMaq"></div></div>`;
     h += `<div class="row acoes">`;
@@ -1296,6 +1388,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
       <div class="tests" data-r="tests"></div>`;
     const R = (k) => el.querySelector(`[data-r="${k}"]`);
     const regras = regrasDe(linhas);
+    const qMax = estadoMaior(linhas);
     const linhaDe = (r) => linhas.indexOf(r.txt) + 1;
 
     function preparar() { st.tr = rastro(linhas, st.args, 3000); st.i = 0; }
@@ -1311,9 +1404,11 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
       desenharFita(R("box"), c.f, c.pos, c.q, fim);
       const res = R("res");
       if (fim) {
-        const v = valorDe(c.f);
-        res.className = "result halt";
-        res.innerHTML = `<strong>Parou no passo ${st.i}: não há instrução para (${esc(c.q)}, ${c.f.get(c.pos) || "0"}).</strong><span>Fita final: <span class="mono">${fitaTxt(c.f) || "vazia"}</span></span><span class="val">${rot(st.args)} = ${v === null ? "?" : v}</span>`;
+        const a = avaliar(c.f, c.pos, c.q, qMax);
+        res.className = "result " + (a.padrao ? "halt" : "limit");
+        const fitaFim = a.t ? `<span class="mono">${a.t}</span> (${a.t.length} traço${a.t.length > 1 ? "s" : ""})` : "em branco";
+        res.innerHTML = `<strong>Parou no passo ${st.i}: não há instrução para (${esc(c.q)}, ${c.f.get(c.pos) || "0"}).</strong><span>Fita final: ${fitaFim}${a.padrao && a.t ? ", cabeçote no primeiro traço" : ""}; estado ${esc(c.q)}${a.padrao ? ", o de maior número" : ""}.</span>` +
+          (a.padrao ? `<span class="val">${rot(st.args)} = ${a.val}</span>` : `<span>Fora da configuração padrão: ${esc(a.motivos.join("; "))}.</span>`);
       } else {
         res.className = "result";
         res.innerHTML = st.i === 0
@@ -1340,9 +1435,9 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
         const a = [].concat(c);
         const tr = rastro(linhas, a, 3000);
         const fimC = tr.conf[tr.conf.length - 1];
-        const v = tr.parou ? valorDe(fimC.f) : null;
-        const ok = v === g.f(...a);
-        return `<span class="${ok ? "pass" : "fail"}">${ok ? "✔" : "✘"} ${rot(a)} = ${v === null ? "?" : v}  (${tr.conf.length - 1} passos)</span>`;
+        const av = tr.parou ? avaliar(fimC.f, fimC.pos, fimC.q, qMax) : null;
+        const ok = !!av && av.padrao && av.val === g.f(...a);
+        return `<span class="${ok ? "pass" : "fail"}">${ok ? "✔" : "✘"} ${rot(a)} = ${av && av.padrao ? av.val : "?"}  (${tr.conf.length - 1} passos)</span>`;
       });
       R("tests").innerHTML = `<span class="sum">Testes com todas as entradas:</span>` + out.join("");
     }
@@ -1411,7 +1506,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     }
     else if (a === "des-sim" && g && window.TuringBolso) {
       const larg = Math.max(...g.passos.map((x) => x.correta[0].length));
-      const prog = `# ${g.nome} (desafio guiado)\n` + g.passos.map((x) => x.correta[0].padEnd(larg + 3) + "# " + x.correta[1]).join("\n") + `\n# sem instrução para ${g.parada}: a máquina para\n`;
+      const prog = `# ${g.nome} (desafio guiado)\n` + g.passos.map((x) => x.correta[0].padEnd(larg + 3) + "# " + x.correta[1]).join("\n") + `\n# sem instrução para ${g.parada}: a máquina para em ${g.final}\n`;
       window.TuringBolso.abrir(prog, g.exec.join(", "), g.idSim);
       mostrarAba("sim");
     }
