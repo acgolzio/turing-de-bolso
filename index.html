@@ -101,7 +101,7 @@ header.top { display: grid; gap: 6px; }
 button, select, input[type="text"], input[type="number"] { font: inherit; color: inherit; }
 button { cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); padding: 9px 14px; min-height: 44px; font-weight: 500; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button:hover { border-color: var(--accent); }
-button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid var(--head); outline-offset: 2px; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--head); outline-offset: 2px; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 button.link { border: 0; background: none; color: var(--accent); padding: 6px 2px; min-height: 40px; text-decoration: underline; text-underline-offset: 3px; font-weight: 600; justify-self: start; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -111,6 +111,7 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
 .row > .field { flex: 1 1 140px; min-width: 0; }
 .row.acoes > button { flex: 1 1 160px; }
+.row > button.primary { flex: 0 0 auto; }
 
 /* ===== guiado: código, alternativas, retorno ===== */
 .prog { display: flex; gap: 5px; align-items: center; }
@@ -185,6 +186,7 @@ textarea#programa {
   caret-color: var(--head); width: 100%;
 }
 textarea#programa:focus { outline: none; }
+textarea#programa::placeholder { color: var(--code-muted); opacity: 1; }
 .editor:focus-within { box-shadow: 0 0 0 3px var(--head); }
 .keypad { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
 .keypad button { padding: 0; min-height: 46px; font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600; }
@@ -196,9 +198,9 @@ textarea#programa:focus { outline: none; }
 .diag .ok { color: var(--ok); font-weight: 600; }
 .diag .bad { color: var(--halt); }
 
-details { border-top: 1px solid var(--line); padding-top: 10px; }
-summary { cursor: pointer; font-weight: 600; min-height: 32px; }
-.help { display: grid; gap: 8px; font-size: 0.95rem; margin-top: 8px; max-width: 65ch; }
+.help { display: grid; gap: 10px; font-size: 0.95rem; max-width: 65ch; }
+.dicas { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.dicas li::marker { color: var(--accent); }
 .help code, .mono { font-family: var(--font-mono); }
 .help code { background: var(--cell0); padding: 1px 5px; border-radius: 4px; }
 .quad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; text-align: center; }
@@ -209,9 +211,6 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .quad .op { background: var(--head); }
 .quad .op b, .quad .op span { color: var(--head-ink); }
 
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; min-height: 40px; }
-.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .preview { font-family: var(--font-mono); font-size: 0.95rem; color: var(--muted); overflow-wrap: anywhere; }
 
 /* execução */
@@ -247,17 +246,13 @@ summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .result.error { background: var(--halt-soft); }
 .result strong { font-size: 1.05rem; }
 .result .val { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; }
-.hist { max-height: 300px; overflow: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.55; white-space: pre; background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
-.hist .hq { color: var(--accent); font-weight: 600; }
 
 .tests { display: grid; gap: 4px; font-family: var(--font-mono); font-size: 0.9rem; }
 .tests .pass { color: var(--ok); }
 .tests .fail { color: var(--halt); }
 .tests .sum { font-family: var(--font-body); font-weight: 600; margin-top: 4px; }
-.task { background: var(--cell0); border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; }
 
 footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-width: 80ch; }
-.toast { font-size: 0.85rem; color: var(--ok); min-height: 1.2em; }
 @media (max-width: 420px) {
   :root { --cell: 40px; }
   .mini { --cell: 36px; }
@@ -297,22 +292,28 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   <main class="layout">
     <div class="col">
       <section class="card" aria-labelledby="t-maquina">
-        <div class="card-head">
-          <h2 id="t-maquina">1. Máquina</h2>
-          <div class="field">
-            <label for="exemplo">Carregar exemplo</label>
-            <select id="exemplo">
-              <option value="">Escolha...</option>
-              <option value="soma">Soma: f(m, n) = m + n</option>
-              <option value="sucessor">Sucessor: S(n) = n + 1</option>
-              <option value="direita">Sucessor pela direita</option>
-              <option value="laco">Laço infinito (nunca para)</option>
-            </select>
+        <h2 id="t-maquina">1. Escreva sua máquina</h2>
+        <div class="help">
+          <p>Cada linha é uma instrução, a <b>quádrupla</b>:</p>
+          <div class="quad">
+            <div class="q"><b>q3</b><span>estado atual</span></div>
+            <div><b>1</b><span>símbolo lido (0 ou 1)</span></div>
+            <div class="op"><b>D</b><span>operação</span></div>
+            <div class="q"><b>q4</b><span>próximo estado</span></div>
           </div>
+          <p>Lê-se: “no estado q3, lendo 1, mova uma casa para a direita e vá para q4”.</p>
+          <ul class="dicas">
+            <li><b>Operações:</b> <code>1</code> escreve um traço, <code>0</code> apaga, <code>D</code> move para a direita, <code>E</code> move para a esquerda. Cada instrução faz uma única ação.</li>
+            <li><b>Números:</b> n é escrito com n + 1 traços (0 é <code>1</code>, 2 é <code>111</code>), e os argumentos são separados por um único 0.</li>
+            <li><b>Início:</b> a máquina começa no estado q1, sobre o traço mais à esquerda.</li>
+            <li><b>Parada:</b> a máquina para quando não existe instrução para o par (estado, símbolo lido). Não pode haver duas instruções para o mesmo par.</li>
+            <li><b>Resultado:</b> no fim, a fita deve ter um único bloco de traços; o valor é o número de traços menos 1.</li>
+            <li>Escreva uma quádrupla por linha. Comentários começam com <code>#</code>.</li>
+          </ul>
         </div>
         <div class="editor">
           <div class="gutter" id="gutter" aria-hidden="true">1</div>
-          <textarea id="programa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Programa em quádruplas, uma instrução por linha"></textarea>
+          <textarea id="programa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Programa em quádruplas, uma instrução por linha" placeholder="Exemplo (sucessor):&#10;q1 1 E q2&#10;q2 0 1 q2"></textarea>
         </div>
         <div class="keypad" id="keypad" aria-label="Teclado de quádruplas">
           <button type="button" data-k="q">q</button>
@@ -335,62 +336,25 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
         <label class="check" for="tecladoNativo"><input type="checkbox" id="tecladoNativo"> Usar o teclado do celular</label>
         <div class="diag" id="diag" aria-live="polite"></div>
         <div class="row">
-          <button type="button" id="copiar">Copiar programa</button>
           <button type="button" id="limpar">Limpar</button>
         </div>
-        <div class="toast" id="toast" aria-live="polite"></div>
-        <details>
-          <summary>Como escrever (notação de Carnielli e Epstein)</summary>
-          <div class="help">
-            <p>Cada linha é uma instrução, a <b>quádrupla</b>:</p>
-            <div class="quad">
-              <div class="q"><b>q3</b><span>estado atual</span></div>
-              <div><b>1</b><span>símbolo lido (0 ou 1)</span></div>
-              <div class="op"><b>D</b><span>operação</span></div>
-              <div class="q"><b>q4</b><span>próximo estado</span></div>
-            </div>
-            <p>Lê-se: “no estado q3, lendo 1, mova uma casa para a direita e vá para q4”.</p>
-            <p>Operações: <code>1</code> escreve um traço, <code>0</code> apaga, <code>D</code> move para a direita, <code>E</code> move para a esquerda. Cada instrução faz uma única ação.</p>
-            <p>O alfabeto é {0, 1}: 0 é a célula em branco. O número n é escrito com n + 1 traços (0 é <code>1</code>, 2 é <code>111</code>); argumentos são separados por um único 0.</p>
-            <p>A máquina começa no estado inicial (q1), sobre o traço mais à esquerda, e <b>para</b> quando não existe instrução para o par (estado, símbolo lido). Não pode haver duas instruções para o mesmo par.</p>
-            <p>Comentários começam com <code>#</code>. Vírgulas e parênteses são ignorados, então <code>(q1, 1, D, q2)</code> também vale.</p>
-          </div>
-        </details>
-      </section>
-
-      <section class="card" aria-labelledby="t-entrada">
-        <div class="card-head">
-          <h2 id="t-entrada">2. Entrada</h2>
-          <div class="seg" role="group" aria-label="Tipo de entrada">
-            <button type="button" id="modoNum" aria-pressed="true">Números</button>
-            <button type="button" id="modoFita" aria-pressed="false">Fita</button>
-          </div>
-        </div>
-        <div class="row">
-          <div class="field" style="flex: 2 1 180px">
-            <label for="entrada" id="entradaLbl">Argumentos (ex.: 1, 2)</label>
-            <input type="text" id="entrada" inputmode="numeric" autocomplete="off" spellcheck="false">
-          </div>
-          <div class="field" style="flex: 1 1 90px">
-            <label for="inicial">Estado inicial</label>
-            <input type="text" id="inicial" value="q1" autocomplete="off" autocapitalize="off" spellcheck="false">
-          </div>
-          <div class="field" style="flex: 1 1 110px">
-            <label for="limite">Limite de passos</label>
-            <input type="number" id="limite" value="10000" min="1" max="1000000" step="1">
-          </div>
-        </div>
-        <p class="preview" id="preview"></p>
-        <button type="button" class="primary" id="executar">Executar e ver a fita</button>
       </section>
     </div>
 
     <div class="col">
       <section class="card" id="sec-exec" aria-labelledby="t-exec">
         <div class="card-head">
-          <h2 id="t-exec">3. Execução</h2>
+          <h2 id="t-exec">2. Execute</h2>
           <span class="status" id="status">Pronta</span>
         </div>
+        <div class="row">
+          <div class="field" style="flex: 1 1 160px">
+            <label for="entrada">Entrada (ex.: 2 ou 1, 2)</label>
+            <input type="text" id="entrada" inputmode="numeric" autocomplete="off" spellcheck="false">
+          </div>
+          <button type="button" class="primary" id="executar">Executar</button>
+        </div>
+        <p class="preview" id="preview"></p>
         <div class="meter">
           <div><span class="lbl">Passo</span><span class="big" id="passo">0</span></div>
           <div><span class="lbl">Estado</span><span class="badge-q" id="estado">q1</span></div>
@@ -408,23 +372,6 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
         </div>
         <div class="speed"><label for="vel" style="color:inherit;font-weight:500">Velocidade</label><input type="range" id="vel" min="1" max="30" value="4"><span id="velLbl" class="mono">4/s</span></div>
         <div class="result" id="result" aria-live="polite"></div>
-        <details id="histBox">
-          <summary>Histórico de configurações</summary>
-          <div class="hist" id="hist"></div>
-        </details>
-      </section>
-
-      <section class="card" aria-labelledby="t-desafios">
-        <div class="card-head">
-          <h2 id="t-desafios">4. Correção automática</h2>
-          <div class="field">
-            <label for="desafio">Escolha o desafio</label>
-            <select id="desafio"></select>
-          </div>
-        </div>
-        <p class="task" id="enunciado"></p>
-        <button type="button" id="testar">Testar minha máquina</button>
-        <div class="tests" id="testes" aria-live="polite"></div>
       </section>
     </div>
   </main>
@@ -441,39 +388,13 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   "use strict";
   const $ = (id) => document.getElementById(id);
 
-  const EXEMPLOS = {
-    soma: {
-      prog: "# Soma: f(m, n) = m + n\n# entrada: m+1 traços, um 0, n+1 traços\nq1 1 D q1   # percorre o 1º bloco\nq1 0 1 q2   # preenche o separador\nq2 1 D q2   # percorre o 2º bloco\nq2 0 E q3   # achou o fim: volta\nq3 1 0 q3   # apaga um traço\nq3 0 E q4\nq4 1 0 q4   # apaga outro traço\nq4 0 E q5\nq5 1 E q5   # volta ao início\nq5 0 D q6   # para em q6\n",
-      entrada: "1, 2"
-    },
-    sucessor: {
-      prog: "# Sucessor: S(n) = n + 1\nq1 1 E q2   # anda uma casa à esquerda\nq2 0 1 q2   # escreve 1; sem instrução para (q2, 1): para\n",
-      entrada: "2"
-    },
-    direita: {
-      prog: "# Outra máquina para o sucessor\nq1 1 D q1   # anda até o fim do bloco\nq1 0 1 q2   # escreve 1 no primeiro branco\n",
-      entrada: "2"
-    },
-    laco: {
-      prog: "# Esta máquina nunca para\nq1 1 D q1\nq1 0 D q1   # sempre há instrução: anda para sempre\n",
-      entrada: "1"
-    }
-  };
-
-  const DESAFIOS = [
-    { id: "sucessor", nome: "Sucessor: S(n) = n + 1", txt: "Aquecimento. A entrada é n (n + 1 traços). A fita deve terminar com n + 1, isto é, n + 2 traços.", aridade: 1, f: (n) => n + 1, casos: [0, 1, 2, 3, 5] },
-    { id: "zero", nome: "Função zero: Z(n) = 0", txt: "Para qualquer n, a fita deve terminar com um único traço (a representação de 0). Dica: apague tudo, menos um traço.", aridade: 1, f: () => 0, casos: [0, 1, 2, 3, 5] },
-    { id: "mais2", nome: "f(n) = n + 2", txt: "A fita deve terminar com n + 3 traços. Dica: adapte o sucessor.", aridade: 1, f: (n) => n + 2, casos: [0, 1, 2, 4] },
-    { id: "proj", nome: "Projeção: P(m, n) = m", txt: "A entrada tem dois argumentos (m + 1 traços, um 0, n + 1 traços). A fita deve terminar só com o primeiro bloco.", aridade: 2, f: (m) => m, casos: [[0, 0], [0, 2], [1, 1], [2, 0], [3, 2]] },
-    { id: "soma", nome: "Soma: f(m, n) = m + n", txt: "Escreva a sua versão da soma (há muitas máquinas diferentes que funcionam).", aridade: 2, f: (m, n) => m + n, casos: [[0, 0], [0, 3], [1, 2], [3, 1], [4, 4]] },
-    { id: "dobro", nome: "Dobro: f(n) = 2n", txt: "Desafio. Só com 0 e 1: tire um traço da entrada, crie à direita um bloco com um traço e repita “apaga um traço da entrada, acrescenta dois ao bloco da direita”.", aridade: 1, f: (n) => 2 * n, casos: [0, 1, 2, 3, 5] }
-  ];
+  const LIMITE = 10000; // passos antes de avisar sobre possível laço infinito
 
   // ---------- armazenamento local ----------
   const KEY = "turing-de-bolso-v1";
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify({ prog: ta.value, modo, entrada: inEntrada.value, inicial: inInicial.value, nativo: chkNativo.checked, desafio: selDesafio.value })); } catch (e) { /* ignorado */ }
+    try { localStorage.setItem(KEY, JSON.stringify({ prog: ta.value, entrada: inEntrada.value, nativo: chkNativo.checked })); } catch (e) { /* ignorado */ }
   }
 
   // ---------- leitura do programa ----------
@@ -505,23 +426,17 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   // ---------- entrada ----------
   function lerEntrada() {
     const v = inEntrada.value.trim();
-    if (modo === "num") {
-      if (!v) return { erro: "Digite pelo menos um número (ex.: 2 ou 1, 2)." };
-      const partes = v.split(/[\s,;]+/).filter(Boolean);
-      const nums = [];
-      for (const p of partes) {
-        if (!/^\d+$/.test(p)) return { erro: `“${p}” não é um número natural.` };
-        const x = parseInt(p, 10);
-        if (x > 200) return { erro: "Use números até 200 para a fita caber na tela." };
-        nums.push(x);
-      }
-      const fita = nums.map((x) => "1".repeat(x + 1)).join("0");
-      return { nums, fita };
+    if (!v) return { erro: "Digite pelo menos um número (ex.: 2 ou 1, 2)." };
+    const partes = v.split(/[\s,;]+/).filter(Boolean);
+    const nums = [];
+    for (const p of partes) {
+      if (!/^\d+$/.test(p)) return { erro: `“${p}” não é um número natural.` };
+      const x = parseInt(p, 10);
+      if (x > 200) return { erro: "Use números até 200 para a fita caber na tela." };
+      nums.push(x);
     }
-    const f = v.replace(/\s+/g, "");
-    if (!f) return { erro: "Digite a fita usando apenas 0 e 1." };
-    if (!/^[01]+$/.test(f)) return { erro: "A fita só pode ter 0 e 1." };
-    return { nums: null, fita: f };
+    const fita = nums.map((x) => "1".repeat(x + 1)).join("0");
+    return { nums, fita };
   }
 
   // ---------- máquina ----------
@@ -534,7 +449,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     const e = lerEntrada();
     M.fita = new Map();
     M.pos = 0; M.passo = 0; M.log = []; M.parou = false; M.limite = false;
-    M.ini = (inInicial.value || "q1").trim() || "q1";
+    M.ini = "q1";
     M.q = M.ini;
     M.nums = null;
     M.erroEntrada = e.erro || null;
@@ -558,7 +473,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
 
   function passo() {
     if (!M.pronto || M.parou) return false;
-    const lim = Math.max(1, parseInt(inLimite.value, 10) || 10000);
+    const lim = LIMITE;
     if (M.passo >= lim) { M.limite = true; return false; }
     const r = regraAtual();
     if (!r) { M.parou = true; return false; }
@@ -603,7 +518,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   function ateFim() {
     pausar();
     if (!M.pronto) return;
-    const lim = Math.max(1, parseInt(inLimite.value, 10) || 10000);
+    const lim = LIMITE;
     let guard = 0;
     while (!M.parou && !M.limite && guard <= lim + 1) { if (!passo()) break; guard++; }
     if (!M.parou && M.passo >= lim) M.limite = true;
@@ -685,13 +600,12 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
       res.innerHTML = `<strong>Parou no passo ${M.passo.toLocaleString("pt-BR")}: não há instrução para (${esc(M.q)}, ${M.fita.get(M.pos) || "0"}).</strong>` + leitura();
     } else if (M.limite) {
       res.classList.add("limit");
-      res.innerHTML = `<strong>Chegou a ${M.passo.toLocaleString("pt-BR")} passos sem parar.</strong><span>A máquina pode estar em um laço infinito, ou só precisa de mais passos: aumente o limite. Nenhum programa consegue decidir isso em todos os casos (problema da parada).</span>`;
+      res.innerHTML = `<strong>Chegou a ${M.passo.toLocaleString("pt-BR")} passos sem parar.</strong><span>A máquina pode estar em um laço infinito, ou precisar de mais de 10.000 passos. Nenhum programa consegue decidir isso em todos os casos (problema da parada).</span>`;
     } else {
       res.innerHTML = M.passo === 0
         ? "<strong>Pronta para executar.</strong><span>Toque em Passo para avançar uma instrução, ou em Rodar.</span>"
         : "<strong>Em execução.</strong><span>Fita atual: " + esc(conteudoFita() || "vazia") + "</span>";
     }
-    if ($("histBox").open && !rodando()) historico();
   }
 
   function conteudoFita() {
@@ -717,38 +631,6 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     return `<span>Fita final: <span class="mono">${v.txt}</span> (${v.txt.length} traço${v.txt.length > 1 ? "s" : ""})</span><span class="val">${f}${v.val}</span>`;
   }
 
-  function historico() {
-    // refaz as configurações a partir da fita inicial (desfazendo o registro numa cópia)
-    const max = 400;
-    const g = new Map(M.fita);
-    for (let k = M.log.length - 1; k >= 0; k--) {
-      const rec = M.log[k];
-      if (rec.w !== null) { if (rec.w === "1") g.set(rec.pos, "1"); else g.delete(rec.pos); }
-    }
-    let pos = M.log.length ? M.log[0].pos : M.pos;
-    let q = M.log.length ? M.log[0].q : M.q;
-    let a = Infinity, b = -Infinity;
-    const snaps = [];
-    const snap = () => { snaps.push({ f: new Map(g), pos, q }); for (const k of g.keys()) { a = Math.min(a, k); b = Math.max(b, k); } a = Math.min(a, pos); b = Math.max(b, pos); };
-    snap();
-    for (let k = 0; k < M.log.length && snaps.length < max; k++) {
-      const rec = M.log[k], r = rec.r;
-      if (r.op === "1") g.set(rec.pos, "1"); else if (r.op === "0") g.delete(rec.pos); else pos = rec.pos + (r.op === "D" ? 1 : -1);
-      q = r.q2;
-      snap();
-    }
-    const linhas = snaps.map((s, i) => {
-      let t = "";
-      for (let j = a - 1; j <= b + 1; j++) {
-        const sym = s.f.get(j) || "0";
-        t += j === s.pos ? `<span class="hq">${esc(s.q)}</span> ${sym} ` : sym + " ";
-      }
-      return String(i).padStart(4, " ") + ":  " + t;
-    });
-    if (M.log.length + 1 > max) linhas.push(`... (mostrando as primeiras ${max} configurações de ${M.log.length + 1})`);
-    $("hist").innerHTML = linhas.join("\n");
-  }
-
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
   // ---------- diagnóstico do editor ----------
@@ -771,60 +653,8 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   }
   function syncGutter() { $("gutter").scrollTop = ta.scrollTop; }
 
-  // ---------- desafios ----------
-  function mostrarDesafio() {
-    const d = DESAFIOS.find((x) => x.id === selDesafio.value) || DESAFIOS[0];
-    $("enunciado").textContent = d.txt;
-    $("testes").innerHTML = "";
-  }
-  function testar() {
-    const d = DESAFIOS.find((x) => x.id === selDesafio.value) || DESAFIOS[0];
-    const p = parse(ta.value);
-    const out = $("testes");
-    if (p.erros.length || p.n === 0) { out.innerHTML = `<span class="fail">Corrija o programa antes de testar.</span>`; return; }
-    const ini = (inInicial.value || "q1").trim() || "q1";
-    let ok = 0;
-    const linhas = d.casos.map((c) => {
-      const args = Array.isArray(c) ? c : [c];
-      const fitaStr = args.map((x) => "1".repeat(x + 1)).join("0");
-      const fita = new Map();
-      for (let i = 0; i < fitaStr.length; i++) if (fitaStr[i] === "1") fita.set(i, "1");
-      let pos = 0, q = ini, n = 0, parou = false;
-      while (n < 100000) {
-        const r = p.regras.get(q + "|" + (fita.get(pos) || "0"));
-        if (!r) { parou = true; break; }
-        if (r.op === "1") fita.set(pos, "1"); else if (r.op === "0") fita.delete(pos); else pos += r.op === "D" ? 1 : -1;
-        q = r.q2; n++;
-      }
-      let obtido;
-      if (!parou) obtido = "não parou em 100.000 passos";
-      else {
-        const ks = [...fita.keys()];
-        let t = "";
-        if (ks.length) { const a = Math.min(...ks), b = Math.max(...ks); for (let i = a; i <= b; i++) t += fita.get(i) || "0"; }
-        obtido = /^1+$/.test(t) ? t.length - 1 : (t ? "fita " + t : "fita vazia");
-      }
-      const esperado = d.f(...args);
-      const certo = obtido === esperado;
-      if (certo) ok++;
-      return `<span class="${certo ? "pass" : "fail"}">${certo ? "✔" : "✘"} f(${args.join(", ")}): esperado ${esperado}, obtido ${esc(String(obtido))}${parou ? ` (${n} passos)` : ""}</span>`;
-    });
-    linhas.push(`<span class="sum">${ok === d.casos.length ? "Tudo certo! Sua máquina passou em todos os testes." : `${ok} de ${d.casos.length} testes corretos. Reveja a máquina e tente de novo.`}</span>`);
-    out.innerHTML = linhas.join("");
-  }
-
   // ---------- elementos e eventos ----------
-  const ta = $("programa"), inEntrada = $("entrada"), inInicial = $("inicial"), inLimite = $("limite"), inVel = $("vel"), preview = $("preview"), chkNativo = $("tecladoNativo"), selDesafio = $("desafio");
-  let modo = "num";
-
-  DESAFIOS.forEach((d) => { const o = document.createElement("option"); o.value = d.id; o.textContent = d.nome; selDesafio.appendChild(o); });
-
-  function setModo(m) {
-    modo = m;
-    $("modoNum").setAttribute("aria-pressed", m === "num" ? "true" : "false");
-    $("modoFita").setAttribute("aria-pressed", m === "fita" ? "true" : "false");
-    $("entradaLbl").textContent = m === "num" ? "Argumentos (ex.: 1, 2)" : "Fita inicial com 0 e 1 (ex.: 1101)";
-  }
+  const ta = $("programa"), inEntrada = $("entrada"), inVel = $("vel"), preview = $("preview"), chkNativo = $("tecladoNativo");
 
   function teclado() {
     const toque = window.matchMedia("(pointer: coarse)").matches;
@@ -837,9 +667,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
 
   ta.addEventListener("input", () => { mostrarDiag(parse(ta.value)); mudou(); });
   ta.addEventListener("scroll", syncGutter);
-  [inEntrada, inInicial, inLimite].forEach((el) => el.addEventListener("input", mudou));
-  $("modoNum").addEventListener("click", () => { setModo("num"); inEntrada.inputMode = "numeric"; carregar(); save(); });
-  $("modoFita").addEventListener("click", () => { setModo("fita"); inEntrada.inputMode = "numeric"; carregar(); save(); });
+  inEntrada.addEventListener("input", mudou);
   inVel.addEventListener("input", () => { $("velLbl").textContent = inVel.value + "/s"; if (rodando()) { pausar(); rodar(); } });
   chkNativo.addEventListener("change", () => { teclado(); save(); ta.blur(); ta.focus(); });
 
@@ -858,19 +686,7 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
     ta.dispatchEvent(new Event("input"));
   });
 
-  $("exemplo").addEventListener("change", (e) => {
-    const ex = EXEMPLOS[e.target.value]; if (!ex) return;
-    ta.value = ex.prog; setModo("num"); inEntrada.value = ex.entrada; inInicial.value = "q1";
-    e.target.value = "";
-    carregar(); save();
-  });
   $("limpar").addEventListener("click", () => { ta.value = ""; carregar(); save(); ta.focus(); });
-  $("copiar").addEventListener("click", () => {
-    const t = ta.value;
-    const done = () => { $("toast").textContent = "Programa copiado. Cole no chat ou no simulador para compartilhar."; setTimeout(() => ($("toast").textContent = ""), 4000); };
-    const fallback = () => { ta.focus(); ta.select(); $("toast").textContent = "Texto selecionado: use Copiar do seu aparelho."; };
-    try { navigator.clipboard.writeText(t).then(done, fallback); } catch (err) { fallback(); }
-  });
 
   $("executar").addEventListener("click", () => {
     carregar();
@@ -879,21 +695,17 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   });
   $("bReset").addEventListener("click", () => { carregar(); });
   $("bBack").addEventListener("click", () => { pausar(); voltar(); render(false); });
-  $("bStep").addEventListener("click", () => { pausar(); if (M.parou || M.limite) return; passo(); if (!M.parou && M.passo >= (parseInt(inLimite.value, 10) || 10000)) M.limite = true; render(false); });
+  $("bStep").addEventListener("click", () => { pausar(); if (M.parou || M.limite) return; passo(); if (!M.parou && M.passo >= LIMITE) M.limite = true; render(false); });
   $("bRun").addEventListener("click", () => { if (rodando()) { pausar(); render(false); } else rodar(); });
   $("bEnd").addEventListener("click", ateFim);
-  $("histBox").addEventListener("toggle", () => { if ($("histBox").open) historico(); });
-  selDesafio.addEventListener("change", () => { mostrarDesafio(); save(); });
-  $("testar").addEventListener("click", testar);
   window.addEventListener("resize", () => { if (!$("painel-sim").hidden) render(true); });
 
   // ---------- interface para as outras partes da página ----------
   window.TuringBolso = {
     redesenhar() { render(true); },
     pausar() { pausar(); render(false); },
-    abrir(prog, entrada, desafioId) {
-      ta.value = prog; setModo("num"); inEntrada.value = entrada; inInicial.value = "q1";
-      if (desafioId && DESAFIOS.some((d) => d.id === desafioId)) { selDesafio.value = desafioId; mostrarDesafio(); }
+    abrir(prog, entrada) {
+      ta.value = prog; inEntrada.value = entrada;
       carregar(); save();
     }
   };
@@ -902,18 +714,12 @@ footer { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; max-wi
   const s = load();
   if (s && typeof s.prog === "string") {
     ta.value = s.prog;
-    setModo(s.modo === "fita" ? "fita" : "num");
-    inEntrada.value = s.entrada || "";
-    inInicial.value = s.inicial || "q1";
+    inEntrada.value = s.modo === "fita" ? "2" : (s.entrada || "2");
     chkNativo.checked = !!s.nativo;
-    if (s.desafio && DESAFIOS.some((d) => d.id === s.desafio)) selDesafio.value = s.desafio;
   } else {
-    ta.value = EXEMPLOS.soma.prog;
-    inEntrada.value = EXEMPLOS.soma.entrada;
-    setModo("num");
+    inEntrada.value = "2";
   }
   teclado();
-  mostrarDesafio();
   carregar();
 })();
 </script>
